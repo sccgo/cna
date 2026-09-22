@@ -1,44 +1,64 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createHmac, randomBytes } from 'crypto';
-import sanitizeHtml from 'sanitize-html';
 
-// ─── HTML Sanitization (sanitize-html — CJS, Vercel-compatible) ──
+// ─── HTML Sanitizer — zero external dependencies ──────────────────
+// Runs server-side only, no ESM issues
 export async function sanitizeHTML(dirty: string): Promise<string> {
   if (!dirty) return '';
-  return sanitizeHtml(dirty, {
-    allowedTags: [
-      'p','br','strong','b','em','i','u','s','strike',
-      'h1','h2','h3','h4','h5','h6',
-      'ul','ol','li','blockquote','pre','code',
-      'a','img','figure','figcaption',
-      'table','thead','tbody','tr','th','td',
-      'audio','video','source',
-      'div','span','sup','sub',
-    ],
-    allowedAttributes: {
-      '*':   ['class','id','style','dir'],
-      'a':   ['href','target','rel'],
-      'img': ['src','alt','title','width','height'],
-      'audio':['src','controls','preload'],
-      'video':['src','controls','preload','width','height'],
-      'source':['src','type'],
-      'td':  ['colspan','rowspan'],
-      'th':  ['colspan','rowspan'],
-    },
-    allowedSchemes: ['http','https','data','blob'],
-    allowedSchemesByTag: { audio:['http','https','blob'], video:['http','https','blob'] },
+
+  const ALLOWED_TAGS = new Set([
+    'p','br','strong','b','em','i','u','s','strike',
+    'h1','h2','h3','h4','h5','h6',
+    'ul','ol','li','blockquote','pre','code',
+    'a','img','figure','figcaption',
+    'table','thead','tbody','tr','th','td',
+    'audio','video','source',
+    'div','span','sup','sub',
+  ]);
+
+  const ALLOWED_ATTRS: Record<string, string[]> = {
+    '*':      ['class','id','style','dir'],
+    'a':      ['href','target','rel'],
+    'img':    ['src','alt','title','width','height'],
+    'audio':  ['src','controls','preload'],
+    'video':  ['src','controls','preload','width','height'],
+    'source': ['src','type'],
+    'td':     ['colspan','rowspan'],
+    'th':     ['colspan','rowspan'],
+  };
+
+  // 1 — Strip dangerous tags with content
+  let clean = dirty
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[^>]*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+
+  // 2 — Remove disallowed tags (keep inner content)
+  clean = clean.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tag) => {
+    if (ALLOWED_TAGS.has(tag.toLowerCase())) {
+      // Clean attributes on allowed tag
+      return match
+        .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/\s+on\w+\s*=\s*\S+/gi, '')
+        .replace(/javascript\s*:/gi, 'blocked:');
+    }
+    return '';
   });
+
+  return clean.trim();
 }
 
 export function stripHTML(html: string): string {
-  return sanitizeHtml(html, { allowedTags: [], allowedAttributes: {} });
+  return html.replace(/<[^>]*>/g, '').trim();
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────────
-interface RateLimitEntry { count: number; resetAt: number; }
-const store = new Map<string, RateLimitEntry>();
-
+interface RLEntry { count: number; resetAt: number; }
+const store = new Map<string, RLEntry>();
 export interface RateLimitResult { success: boolean; remaining: number; resetAt: number; }
 
 export function rateLimit(key: string, max = 30, windowMs = 60_000): RateLimitResult {
@@ -55,13 +75,12 @@ export function rateLimit(key: string, max = 30, windowMs = 60_000): RateLimitRe
 }
 setInterval(() => { const now = Date.now(); store.forEach((v,k) => { if (now > v.resetAt) store.delete(k); }); }, 60_000);
 
-export const rateLimitAuth     = (ip: string) => rateLimit(`auth:${ip}`,     10, 15*60_000);
-export const rateLimitRegister = (ip: string) => rateLimit(`register:${ip}`,  5, 60*60_000);
+export const rateLimitAuth     = (ip: string) => rateLimit(`auth:${ip}`,      10, 15*60_000);
+export const rateLimitRegister = (ip: string) => rateLimit(`register:${ip}`,   5, 60*60_000);
 export const rateLimitAPI      = (ip: string, ep: string) => rateLimit(`api:${ip}:${ep}`, 60, 60_000);
 
 // ─── CSRF ──────────────────────────────────────────────────────────
-const CSRF_SECRET = process.env.SESSION_SECRET ?? 'fallback';
-
+const CSRF_SECRET = process.env.SESSION_SECRET ?? 'fallback-secret';
 export function generateCSRFToken(): string {
   const nonce = randomBytes(16).toString('hex');
   const hmac  = createHmac('sha256', CSRF_SECRET).update(nonce).digest('hex');
@@ -70,7 +89,6 @@ export function generateCSRFToken(): string {
 export function verifyCSRFToken(token: string): boolean {
   if (!token?.includes('.')) return false;
   const [nonce, hmac] = token.split('.');
-  if (!nonce || !hmac) return false;
   const expected = createHmac('sha256', CSRF_SECRET).update(nonce).digest('hex');
   if (hmac.length !== expected.length) return false;
   let diff = 0;
@@ -78,11 +96,11 @@ export function verifyCSRFToken(token: string): boolean {
   return diff === 0;
 }
 
-// ─── Validation Schemas ────────────────────────────────────────────
+// ─── Zod Schemas ──────────────────────────────────────────────────
 export const RegisterSchema = z.object({
   email:    z.string().email('بريد إلكتروني غير صالح').max(254).toLowerCase().trim(),
   username: z.string().min(3,'3 أحرف على الأقل').max(30).regex(/^[a-zA-Z0-9_\u0600-\u06FF]+$/,'رموز غير مسموح بها').trim(),
-  password: z.string().min(8,'8 أحرف على الأقل').max(128).regex(/[A-Z]/,'يجب أن تحتوي على حرف كبير').regex(/[a-z]/,'حرف صغير').regex(/[0-9]/,'رقم'),
+  password: z.string().min(8,'8 أحرف على الأقل').max(128).regex(/[A-Z]/,'حرف كبير مطلوب').regex(/[0-9]/,'رقم مطلوب'),
   fullName: z.string().min(2,'الاسم قصير').max(100).trim(),
 });
 export const LoginSchema = z.object({
@@ -90,34 +108,30 @@ export const LoginSchema = z.object({
   password:   z.string().min(1).max(128),
 });
 export const NewsCreateSchema = z.object({
-  title:        z.string().min(3).max(500).trim(),
-  titleEn:      z.string().max(500).trim().optional().nullable(),
-  shortDesc:    z.string().max(1000).optional().nullable(),
-  shortDescEn:  z.string().max(1000).optional().nullable(),
-  content:      z.string().min(1),
-  contentEn:    z.string().optional().nullable(),
-  lang:         z.enum(['ar','en','both']).default('ar'),
-  isBreaking:   z.boolean().default(false),
+  title:       z.string().min(3).max(500).trim(),
+  titleEn:     z.string().max(500).optional().nullable(),
+  shortDesc:   z.string().max(1000).optional().nullable(),
+  shortDescEn: z.string().max(1000).optional().nullable(),
+  content:     z.string().min(1),
+  contentEn:   z.string().optional().nullable(),
+  lang:        z.enum(['ar','en','both']).default('ar'),
+  isBreaking:  z.boolean().default(false),
   breakingStyle:z.enum(['ticker','popup','bar']).default('ticker'),
-  isFeatured:   z.boolean().default(false),
-  isLive:       z.boolean().default(false),
-  liveUrl:      z.string().url().optional().nullable(),
-  category:     z.string().max(50).default('general'),
-  departmentId: z.string().optional().nullable(),
-  tags:         z.array(z.string().max(50)).max(10).default([]),
-  source:       z.string().max(200).optional().nullable(),
-  sourceUrl:    z.string().url().optional().nullable(),
-  heroStyle:    z.object({ bgType: z.enum(['white','color','gradient','image']).default('white'), bgValue: z.string().max(500).optional() }).optional(),
+  isFeatured:  z.boolean().default(false),
+  isLive:      z.boolean().default(false),
+  liveUrl:     z.string().url().optional().nullable(),
+  category:    z.string().max(50).default('general'),
+  departmentId:z.string().optional().nullable(),
+  tags:        z.array(z.string().max(50)).max(10).default([]),
+  source:      z.string().max(200).optional().nullable(),
+  sourceUrl:   z.string().url().optional().nullable(),
+  heroStyle:   z.object({ bgType: z.string(), bgValue: z.string().optional() }).optional(),
 });
 
-// ─── IP ───────────────────────────────────────────────────────────
+// ─── IP + Responses ───────────────────────────────────────────────
 export function getClientIP(req: NextRequest): string {
   return req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
 }
-
-// ─── Responses ────────────────────────────────────────────────────
-export const apiError = (msg: string, status = 400) => Response.json({ error: msg }, { status });
+export const apiError   = (msg: string, status = 400) => Response.json({ error: msg }, { status });
 export const apiSuccess = (data: unknown, status = 200) => Response.json(data, { status });
-export const unauthorized = (msg = 'غير مصرح') => Response.json({ error: msg }, { status: 401 });
-export const forbidden = (msg = 'ليس لديك صلاحية') => Response.json({ error: msg }, { status: 403 });
 export const tooManyRequests = () => Response.json({ error: 'طلبات كثيرة جداً' }, { status: 429, headers: { 'Retry-After': '60' } });
