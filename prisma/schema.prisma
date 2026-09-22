@@ -1,0 +1,341 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────
+
+enum Role {
+  VIEWER          // زائر - تصفح فقط
+  EDITOR          // محرر - ينشئ ويعدل (يحتاج مراجعة)
+  REVIEWER        // مراجع - يراجع ويقبل/يرفض
+  DEVELOPER       // مبرمج - يعدل التصميم (يحتاج موافقة)
+  EDITOR_IN_CHIEF // رئيس التحرير - صلاحيات كاملة للمحتوى
+  ADMISSIONS      // عمادة القبول - يقبل/يرفض المستخدمين
+  DIRECTOR        // رئيس الوكالة/المدير - كل الصلاحيات
+}
+
+enum UserStatus {
+  PENDING   // في انتظار التحقق من البريد
+  VERIFIED  // تم التحقق من البريد - في انتظار القبول
+  APPROVED  // مقبول
+  REJECTED  // مرفوض
+  SUSPENDED // موقوف
+}
+
+enum ContentStatus {
+  DRAFT          // مسودة
+  PENDING_REVIEW // في انتظار المراجعة
+  APPROVED       // معتمد - يظهر للعامة
+  REJECTED       // مرفوض
+}
+
+enum DesignStatus {
+  PENDING  // في انتظار موافقة المدير
+  APPROVED // معتمد - يطبق على الموقع
+  REJECTED // مرفوض
+}
+
+// ─── USERS ───────────────────────────────────────────────────
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  username       String     @unique
+  password       String
+  fullName       String
+  role           Role       @default(VIEWER)
+  status         UserStatus @default(PENDING)
+  emailVerified  Boolean    @default(false)
+  verifyToken    String?    @unique
+  verifyExpires  DateTime?
+  resetToken     String?    @unique
+  resetExpires   DateTime?
+  rejectionNote  String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  lastLoginAt    DateTime?
+  avatar         String?
+  bio            String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  news           News[]
+  pollVotes      PollVote[]
+  electionVotes  ElectionVote[]
+  sessions       Session[]
+  notifications  Notification[]
+  designChanges  DesignChange[]
+  activityLogs   ActivityLog[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Json     @default("{}")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+// ─── CONTENT ──────────────────────────────────────────────────
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  nameEn    String?
+  slug      String   @unique
+  color     String   @default("#0a0a0a")
+  icon      String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  news      News[]
+}
+
+model News {
+  id               String        @id @default(cuid())
+  title            String
+  titleEn          String?
+  slug             String        @unique
+  shortDesc        String?       @db.Text
+  shortDescEn      String?       @db.Text
+  content          String        @db.Text
+  contentEn        String?       @db.Text
+  lang             String        @default("ar")
+  mainImage        String?
+  images           String[]      @default([])
+  isBreaking       Boolean       @default(false)
+  breakingStyle    String        @default("ticker") // ticker | popup | bar
+  isFeatured       Boolean       @default(false)
+  isLive           Boolean       @default(false)
+  liveUrl          String?
+  status           ContentStatus @default(DRAFT)
+  reviewNote       String?
+  heroStyle        Json?         // {bgType, bgValue, titleColor, etc}
+  category         String        @default("general")
+  tags             String[]      @default([])
+  source           String?
+  sourceUrl        String?
+  isImported       Boolean       @default(false)
+  views            Int           @default(0)
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  authorId         String?
+  author           User?         @relation(fields: [authorId], references: [id])
+  departmentId     String?
+  department       Department?   @relation(fields: [departmentId], references: [id])
+  poll             Poll?
+  counter          Counter?
+  newspaperItems   NewspaperItem[]
+
+  @@index([status])
+  @@index([isBreaking])
+  @@index([isFeatured])
+  @@index([publishedAt])
+}
+
+model Poll {
+  id         String     @id @default(cuid())
+  newsId     String     @unique
+  news       News       @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  question   String
+  questionEn String?
+  options    String[]
+  optionsEn  String[]   @default([])
+  expiresAt  DateTime?
+  isActive   Boolean    @default(true)
+  votes      PollVote[]
+  createdAt  DateTime   @default(now())
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  optionIdx Int
+  createdAt DateTime @default(now())
+
+  @@unique([pollId, userId])
+}
+
+model Counter {
+  id         String   @id @default(cuid())
+  newsId     String   @unique
+  news       News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  direction  String   @default("up") // up | down
+  startDate  DateTime
+  label      String   @default("منذ")
+  labelEn    String   @default("Since")
+  textFont   String   @default("Cairo")
+  numFont    String   @default("Georgia")
+  bgColor    String   @default("#000000")
+  bgGradient String?
+  bgImage    String?
+  textColor  String   @default("#ffffff")
+  numColor   String   @default("#ffffff")
+  isEnabled  Boolean  @default(true)
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model DesignChange {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  settings    Json         // snapshot of changed settings
+  status      DesignStatus @default(PENDING)
+  reviewNote  String?
+  submittedBy String
+  developer   User         @relation(fields: [submittedBy], references: [id])
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  appliedAt   DateTime?
+  createdAt   DateTime     @default(now())
+}
+
+// ─── ELECTIONS ────────────────────────────────────────────────
+
+model Election {
+  id          String         @id @default(cuid())
+  title       String
+  titleEn     String?
+  type        String         @default("local") // local | us_presidential
+  description String?        @db.Text
+  isActive    Boolean        @default(false)
+  endsAt      DateTime?
+  candidates  Json           // [{id, name, nameEn, party, color, image}]
+  stateData   Json?          // For US elections: {AL: {winner, dem, rep, votes}}
+  results     Json?
+  totalVotes  Int            @default(0)
+  winner      String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  votes       ElectionVote[]
+}
+
+model ElectionVote {
+  id           String    @id @default(cuid())
+  electionId   String
+  election     Election  @relation(fields: [electionId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  candidateId  String
+  state        String?
+  createdAt    DateTime  @default(now())
+
+  @@unique([electionId, userId])
+}
+
+// ─── NEWSPAPER ────────────────────────────────────────────────
+
+model Newspaper {
+  id          String          @id @default(cuid())
+  title       String
+  edition     Int
+  date        DateTime        @default(now())
+  isPublished Boolean         @default(false)
+  pdfUrl      String?
+  coverImage  String?
+  template    String          @default("classic")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  pages       NewspaperPage[]
+}
+
+model NewspaperPage {
+  id           String          @id @default(cuid())
+  newspaperId  String
+  newspaper    Newspaper       @relation(fields: [newspaperId], references: [id], onDelete: Cascade)
+  pageNum      Int
+  section      String          @default("general") // local|international|economy|sports|culture|opinion
+  sectionAr    String          @default("عام")
+  layout       String          @default("standard") // standard|featured|columns
+  items        NewspaperItem[]
+  createdAt    DateTime        @default(now())
+}
+
+model NewspaperItem {
+  id       String        @id @default(cuid())
+  pageId   String
+  page     NewspaperPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  newsId   String?
+  news     News?         @relation(fields: [newsId], references: [id])
+  title    String?
+  content  String?       @db.Text
+  image    String?
+  order    Int           @default(0)
+  size     String        @default("medium") // small|medium|large|full
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // approval_request|content_review|design_review|election|etc
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+}
+
+// ─── ACTIVITY LOG ─────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String?
+  entityId  String?
+  details   Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── BREAKING NEWS ────────────────────────────────────────────
+
+model BreakingNews {
+  id          String   @id @default(cuid())
+  text        String
+  textEn      String?
+  style       String   @default("ticker") // ticker | popup | fullbar
+  bgColor     String   @default("#cc0000")
+  textColor   String   @default("#ffffff")
+  linkUrl     String?
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+}
