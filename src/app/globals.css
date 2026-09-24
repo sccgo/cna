@@ -359,7 +359,7 @@ select.form-control { cursor: pointer; }
 .admin-layout { display: flex; min-height: 100vh; }
 .admin-sidebar {
   width: 256px; background: var(--black); color: var(--white);
-  flex-shrink: 0; position: fixed; top: 0; bottom: 0; left: 0;
+  flex-shrink: 0; position: fixed; top: 0; bottom: 0; right: 0;
   overflow-y: auto; display: flex; flex-direction: column; z-index: 200;
 }
 .admin-sidebar::-webkit-scrollbar { width: 4px; }
@@ -375,13 +375,13 @@ select.form-control { cursor: pointer; }
 .admin-nav-link {
   display: flex; align-items: center; gap: .7rem; padding: .68rem 1.5rem;
   font-size: .855rem; color: rgba(255,255,255,.68); transition: var(--transition);
-  border-right: 3px solid transparent;
+  border-left: 3px solid transparent;
 }
 .admin-nav-link:hover { background: rgba(255,255,255,.07); color: var(--white); }
-.admin-nav-link.active { background: rgba(255,255,255,.11); color: var(--white); border-right-color: var(--white); }
+.admin-nav-link.active { background: rgba(255,255,255,.11); color: var(--white); border-left-color: var(--white); }
 .admin-nav-icon { width: 16px; text-align: center; font-size: .78rem; flex-shrink: 0; }
 .admin-sidebar-footer { padding: 1.2rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); }
-.admin-main { flex: 1; margin-right: 256px; background: var(--gray-100); min-height: 100vh; display: flex; flex-direction: column; }
+.admin-main { flex: 1; margin-left: 256px; margin-right: 0; background: var(--gray-100); min-height: 100vh; display: flex; flex-direction: column; }
 .admin-topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 1rem; }
 .admin-page-title { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; }
 .admin-content { padding: 1.75rem; flex: 1; }
@@ -543,7 +543,7 @@ select.form-control { cursor: pointer; }
   .world-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .admin-sidebar { width: 220px; }
-  .admin-main { margin-right: 220px; }
+  .admin-main { margin-left: 220px; margin-right: 0; }
   .admin-content { padding: 1rem; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .footer-bottom { flex-direction: column; }
@@ -554,7 +554,7 @@ select.form-control { cursor: pointer; }
 @media (max-width: 500px) {
   .admin-layout { flex-direction: column; }
   .admin-sidebar { width: 100%; position: relative; height: auto; }
-  .admin-main { margin-right: 0; }
+  .admin-main { margin-left: 0; margin-right: 0; }
   .stats-grid { grid-template-columns: 1fr; }
   .election-candidates { grid-template-columns: 1fr; }
   .counter-grid { grid-template-columns: repeat(2,1fr); }
