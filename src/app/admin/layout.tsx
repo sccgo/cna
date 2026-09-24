@@ -55,7 +55,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="admin-layout">
       <div className="admin-sidebar">
-        <div className="admin-sidebar-logo">
+        <div className="admin-sidebar-logo" style={{cursor:'default'}}
+          onClick={e=>{if((window as any).CNA?.sparkles){const r=(e.currentTarget as HTMLElement).getBoundingClientRect();(window as any).CNA.sparkles.burst(r.left+r.width/2,r.top+r.height/2,25);}}}>
           <div className="admin-logo-cna">CNA</div>
           <div className="admin-logo-ar">لوحة التحكم</div>
         </div>
@@ -72,9 +73,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             return (
               <Link key={itm.href} href={itm.href}
                 className={`admin-nav-link ${active?'active':''}`}
-                target={itm.ext ? '_blank' : undefined}>
-                <span className="admin-nav-icon">{itm.icon}</span>
+                target={itm.ext ? '_blank' : undefined}
+                style={{flexDirection:'row',justifyContent:'flex-end'}}>
                 {itm.label}
+                <span className="admin-nav-icon" style={{marginRight:0,marginLeft:'.5rem'}}>{itm.icon}</span>
               </Link>
             );
           })}

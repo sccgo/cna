@@ -41,6 +41,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        {/* Sparkles effect */}
+        <script src="/vendor/sparkles.js" defer></script>
         {/* Live theme refresh every 30s */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){

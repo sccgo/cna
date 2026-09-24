@@ -68,7 +68,8 @@ function buildEmail(title: string, body: string, siteName: string): string {
 // Email verification
 export async function sendVerificationEmail(email: string, fullName: string, token: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   const verifyUrl = `${siteUrl}/verify?token=${token}`;
   const body = `
     <p style="margin-bottom:1rem">مرحباً <strong>${fullName}</strong>،</p>
@@ -83,7 +84,8 @@ export async function sendVerificationEmail(email: string, fullName: string, tok
 // Account approved
 export async function sendApprovalEmail(email: string, fullName: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   const body = `
     <p>مرحباً <strong>${fullName}</strong>،</p>
     <p>يسعدنا إخبارك بأن طلب انضمامك إلى <strong>${siteName}</strong> قد تمت <strong>الموافقة عليه</strong>.</p>
@@ -108,7 +110,8 @@ export async function sendRejectionEmail(email: string, fullName: string, note?:
 // Pending approval notification to admissions
 export async function sendNewRegistrationAlert(newUserName: string, newUserEmail: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   // Get admissions emails
   const admissions = await prisma.user.findMany({
     where: { role: 'ADMISSIONS', status: 'APPROVED' },
@@ -130,7 +133,8 @@ export async function sendNewRegistrationAlert(newUserName: string, newUserEmail
 // Password reset
 export async function sendPasswordResetEmail(email: string, fullName: string, token: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   const resetUrl = `${siteUrl}/reset-password?token=${token}`;
   const body = `
     <p>مرحباً <strong>${fullName}</strong>،</p>
@@ -144,7 +148,8 @@ export async function sendPasswordResetEmail(email: string, fullName: string, to
 // Design review notification
 export async function sendDesignReviewAlert(developerName: string, designTitle: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   const directors = await prisma.user.findMany({
     where: { role: 'DIRECTOR', status: 'APPROVED' },
     select: { email: true },
@@ -161,7 +166,8 @@ export async function sendDesignReviewAlert(developerName: string, designTitle: 
 // Content review
 export async function sendContentReviewAlert(newsTitle: string, newsId: string) {
   const siteName = await getSiteName();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? \`https://\${process.env.VERCEL_URL}\` : 'http://localhost:3000');
   const reviewers = await prisma.user.findMany({
     where: { role: { in: ['REVIEWER', 'EDITOR_IN_CHIEF', 'DIRECTOR'] }, status: 'APPROVED' },
     select: { email: true },

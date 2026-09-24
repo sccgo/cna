@@ -110,13 +110,32 @@ export default function SettingsPage() {
   }
 
   async function resetTheme() {
-    if(!confirm('إعادة ضبط التصميم للافتراضي؟')) return;
-    const resetKeys = Object.keys(s).filter(k=>k.startsWith('theme_'));
+    if(!confirm('إعادة ضبط التصميم للافتراضي؟ سيتم حذف جميع تخصيصات التصميم.')) return;
+    // Delete all theme keys by setting them to 'default' or empty
+    const themeKeys = [
+      'theme_font_body','theme_font_heading',
+      'theme_site_bg_type','theme_site_bg_value',
+      'theme_header_bg_type','theme_header_bg_value',
+      'theme_nav_bg_type','theme_nav_bg_value',
+      'theme_footer_bg_type','theme_footer_bg_value',
+      'theme_card_bg','theme_card_border','theme_card_title_color',
+      'theme_accent_color','theme_text_primary','theme_text_secondary',
+      'theme_nav_link_color','theme_btn_bg','theme_btn_text',
+      'theme_btn_hover_bg','theme_readmore_bg','theme_readmore_text',
+      'theme_hero_panel_bg','theme_hero_panel_gradient',
+      'theme_hero_title_color','theme_hero_desc_color',
+      'theme_hero_badge_bg','theme_hero_badge_text',
+      'theme_hero_border','ticker_bg','ticker_text_color','ticker_speed',
+    ];
     const payload: Settings = {};
-    resetKeys.forEach(k=>payload[k]='');
-    await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const fresh = await fetch('/api/settings').then(r=>r.json());
-    setS(fresh); setMsg('تم إعادة الضبط');
+    themeKeys.forEach(k => { payload[k] = 'default'; });
+    payload['theme_version'] = String(Date.now()); // force CSS refresh
+    const res = await fetch('/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(res.ok) {
+      const fresh = await fetch('/api/settings').then(r=>r.json());
+      setS(fresh);
+      setMsg('تم إعادة الضبط للافتراضي ✓');
+    } else setMsg('حدث خطأ في إعادة الضبط');
   }
 
   async function uploadLogo(file: File) {
@@ -162,6 +181,20 @@ export default function SettingsPage() {
             {s.logo_path && <img src={s.logo_path} alt="الشعار" style={{height:50,border:'1px solid var(--border)',padding:4}} onError={(e:any)=>e.currentTarget.style.display='none'} />}
             <input type="file" accept="image/*,.svg" className="form-control" style={{flex:1,minWidth:200}} onChange={e=>{const f=e.target.files?.[0];if(f)uploadLogo(f);}} />
           </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">شعار ثانوي (جهة حكومية أو راعي)</label>
+          <div style={{display:'flex',gap:'1rem',alignItems:'center',flexWrap:'wrap'}}>
+            {s.secondary_logo_path && <img src={s.secondary_logo_path} alt="الشعار الثانوي" style={{height:46,border:'1px solid var(--border)',padding:4}} onError={(e:any)=>e.currentTarget.style.display='none'} />}
+            <input type="file" accept="image/*,.svg" className="form-control" style={{flex:1,minWidth:200}} onChange={async e=>{
+              const f=e.target.files?.[0]; if(!f) return;
+              const fd=new FormData(); fd.append('file',f); fd.append('type','logo');
+              const res=await fetch('/api/upload',{method:'POST',body:fd}); const d=await res.json();
+              if(d.url) { set('secondary_logo_path',d.url); setMsg('تم رفع الشعار الثانوي'); }
+            }} />
+            {s.secondary_logo_path && <button type="button" className="btn btn-xs btn-danger" onClick={()=>set('secondary_logo_path','')}>حذف</button>}
+          </div>
+          <small style={{fontSize:'.75rem',color:'var(--gray-400)'}}>يظهر بجانب شعار الوكالة في الهيدر</small>
         </div>
         <label className="form-check"><input type="checkbox" checked={s.registration_enabled==='1'} onChange={e=>set('registration_enabled',e.target.checked?'1':'0')} /><span>السماح بإنشاء حسابات جديدة</span></label>
       </div>

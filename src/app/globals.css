@@ -375,14 +375,14 @@ select.form-control { cursor: pointer; }
 .admin-nav-link {
   display: flex; align-items: center; gap: .7rem; padding: .68rem 1.5rem;
   font-size: .855rem; color: rgba(255,255,255,.68); transition: var(--transition);
-  border-left: 3px solid transparent;
+  border-right: 3px solid transparent; flex-direction: row-reverse; justify-content: flex-end;
 }
 .admin-nav-link:hover { background: rgba(255,255,255,.07); color: var(--white); }
-.admin-nav-link.active { background: rgba(255,255,255,.11); color: var(--white); border-left-color: var(--white); }
-.admin-nav-icon { width: 16px; text-align: center; font-size: .78rem; flex-shrink: 0; }
+.admin-nav-link.active { background: rgba(255,255,255,.11); color: var(--white); border-right-color: var(--white); }
+.admin-nav-icon { width: 16px; text-align: center; font-size: .85rem; flex-shrink: 0; }
 .admin-sidebar-footer { padding: 1.2rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); }
 .admin-main { flex: 1; margin-left: 256px; margin-right: 0; background: var(--gray-100); min-height: 100vh; display: flex; flex-direction: column; }
-.admin-topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 1rem; }
+.admin-topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 1rem; direction: rtl; }
 .admin-page-title { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; }
 .admin-content { padding: 1.75rem; flex: 1; }
 
@@ -559,3 +559,19 @@ select.form-control { cursor: pointer; }
   .election-candidates { grid-template-columns: 1fr; }
   .counter-grid { grid-template-columns: repeat(2,1fr); }
 }
+
+/* ─── Sparkles ──────────────────────────────────────────────── */
+@keyframes sparkle-spin {
+  0%   { transform: rotate(0deg) scale(1); opacity: 1; }
+  50%  { transform: rotate(180deg) scale(1.2); opacity: .8; }
+  100% { transform: rotate(360deg) scale(0); opacity: 0; }
+}
+.sparkle-star {
+  position: fixed; pointer-events: none; z-index: 9999;
+  animation: sparkle-spin .8s ease-out forwards;
+  font-size: 1.1rem; user-select: none;
+}
+
+/* ─── Admin sidebar sparkle hover ───────────────────────────── */
+.admin-sidebar-logo:hover { cursor: pointer; }
+.admin-sidebar-logo:hover .admin-logo-cna { text-shadow: 0 0 20px rgba(255,215,0,.6); }

@@ -189,9 +189,14 @@ export default function HomeClient({ settings, departments, featuredNews, breaki
       {/* Header */}
       <header className="site-header">
         <div className="header-inner">
-          <Link href="/" className="site-logo">
+          <Link href="/" className="site-logo" style={{display:'flex',alignItems:'center',gap:'1rem'}}>
             <img src={settings.logo_path || '/img/logo.png'} alt="CNA" style={{ height:52, width:'auto' }}
               onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            {settings.secondary_logo_path && (<>
+              <div style={{width:1,height:40,background:'var(--border)'}} />
+              <img src={settings.secondary_logo_path} alt="شعار" style={{height:46,width:'auto',opacity:.9}}
+                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            </>)}
           </Link>
           <form className="search-form" onSubmit={doSearch} style={{ flex:1, maxWidth:300 }}>
             <input type="text" placeholder="ابحث في الأخبار..." value={search} onChange={e => setSearch(e.target.value)} autoComplete="off" />
