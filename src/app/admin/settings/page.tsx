@@ -134,7 +134,7 @@ export default function SettingsPage() {
     if(res.ok) {
       const fresh = await fetch('/api/settings').then(r=>r.json());
       setS(fresh);
-      setMsg('تم إعادة الضبط للافتراضي ✓');
+      setMsg('تم إعادة الضبط للافتراضي ');
     } else setMsg('حدث خطأ في إعادة الضبط');
   }
 
@@ -288,6 +288,170 @@ export default function SettingsPage() {
         <div className="form-group">
           <label className="form-label">السرعة: {s.ticker_speed||40} (كلما زادت كان أبطأ)</label>
           <input type="range" min={5} max={100} value={s.ticker_speed||40} onChange={e=>set('ticker_speed',e.target.value)} style={{width:'100%'}} />
+        </div>
+      </div>
+
+      {/* Occasions */}
+      <div className="admin-card">
+        <div className="admin-card-title">المناسبات والأحداث الوطنية</div>
+        <p style={{fontSize:'.82rem',color:'var(--gray-500)',marginBottom:'1rem'}}>
+          عند تفعيل المناسبة تظهر: شريط نص متحرك + صورة المناسبة في الصفحة الرئيسية
+        </p>
+        <label className="form-check" style={{marginBottom:'1rem'}}>
+          <input type="checkbox" checked={s.occasion_enabled==='1'} onChange={e=>set('occasion_enabled',e.target.checked?'1':'0')} />
+          <span>تفعيل وضع المناسبة</span>
+        </label>
+        {s.occasion_enabled==='1' && (<>
+          <div className="form-group">
+            <label className="form-label">عنوان المناسبة</label>
+            <input className="form-control" value={s.occasion_title||''} onChange={e=>set('occasion_title',e.target.value)} placeholder="اليوم الوطني السعودي الـ 94" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">نص الشريط المتحرك (يتكرر تلقائياً)</label>
+            <input className="form-control" value={s.occasion_text||''} onChange={e=>set('occasion_text',e.target.value)} placeholder="تهنئ وكالة الأنباء التنسيقية بمناسبة اليوم الوطني..." />
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">خلفية شريط النص</label>
+              <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
+                <input type="color" className="form-control" value={s.occasion_strip_bg||'#006847'} onChange={e=>set('occasion_strip_bg',e.target.value)} style={{height:45,width:60}} />
+                <div style={{display:'flex',gap:'.3rem',flexWrap:'wrap'}}>
+                  {['#006847','#0d1b4b','#1a1a2e','#8B0000','#C9A84C','#2d4a22'].map(col=>(
+                    <div key={col} onClick={()=>set('occasion_strip_bg',col)} style={{width:24,height:24,background:col,cursor:'pointer',border:'2px solid '+(s.occasion_strip_bg===col?'var(--black)':'transparent')}} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">لون النص</label>
+              <input type="color" className="form-control" value={s.occasion_strip_color||'#ffffff'} onChange={e=>set('occasion_strip_color',e.target.value)} style={{height:45}} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">صورة المناسبة (تظهر في أعلى الصفحة الرئيسية)</label>
+            {s.occasion_image && <img src={s.occasion_image} alt="" style={{width:'100%',maxHeight:160,objectFit:'cover',marginBottom:'.5rem',border:'1px solid var(--border)'}} />}
+            <input type="file" accept="image/*,video/*" className="form-control" onChange={async e=>{
+              const f=e.target.files?.[0]; if(!f) return;
+              const fd=new FormData(); fd.append('file',f); fd.append('type','bg');
+              const res=await fetch('/api/upload',{method:'POST',body:fd}); const d=await res.json();
+              if(d.url) set('occasion_image',d.url);
+            }} />
+            {s.occasion_image && <button type="button" className="btn btn-xs btn-danger" style={{marginTop:'.5rem'}} onClick={()=>set('occasion_image','')}>إزالة الصورة</button>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">رابط عند النقر على صورة المناسبة (اختياري)</label>
+            <input className="form-control ltr" value={s.occasion_link||''} onChange={e=>set('occasion_link',e.target.value)} placeholder="https://..." dir="ltr" />
+          </div>
+        </>)}
+      </div>
+
+      {/* Sparkles */}
+      <div className="admin-card">
+        <div className="admin-card-title">تأثير الجسيمات المتساقطة (السباركلز)</div>
+        <p style={{fontSize:'.82rem',color:'var(--gray-500)',marginBottom:'1rem'}}>
+          جسيمات ذهبية تتساقط على الموقع — قابلة للتخصيص الكامل
+        </p>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">تفعيل السباركلز</label>
+            <div style={{display:'flex',gap:'1rem',marginTop:'.5rem'}}>
+              <label className="form-check">
+                <input type="checkbox" checked={s.sparkles_enabled==='1'}
+                  onChange={e=>{set('sparkles_enabled',e.target.checked?'1':'0');
+                    if(e.target.checked && (window as any).CNA?.sparkles){
+                      (window as any).CNA.sparkles.start({enabled:true,count:parseInt(s.sparkles_count||'30'),speed:parseFloat(s.sparkles_speed||'1.2'),opacity:parseFloat(s.sparkles_opacity||'0.8'),colors:(s.sparkles_colors||'#C9A84C,#E8D48B,#FFFFFF').split(','),shapes:(s.sparkles_shapes||'star,diamond').split(',')});
+                    } else { (window as any).CNA?.sparkles?.stop(); }
+                  }} />
+                <span>تفعيل</span>
+              </label>
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">عدد الجسيمات: {s.sparkles_count||'30'}</label>
+            <input type="range" min="5" max="120" value={s.sparkles_count||'30'}
+              onChange={e=>{set('sparkles_count',e.target.value);(window as any).CNA?.sparkles?.update({count:parseInt(e.target.value)});}}
+              style={{width:'100%'}} />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">السرعة: {s.sparkles_speed||'1.2'}</label>
+            <input type="range" min="0.3" max="5" step="0.1" value={s.sparkles_speed||'1.2'}
+              onChange={e=>{set('sparkles_speed',e.target.value);(window as any).CNA?.sparkles?.update({speed:parseFloat(e.target.value)});}}
+              style={{width:'100%'}} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">الشفافية: {s.sparkles_opacity||'0.8'}</label>
+            <input type="range" min="0.1" max="1" step="0.05" value={s.sparkles_opacity||'0.8'}
+              onChange={e=>{set('sparkles_opacity',e.target.value);(window as any).CNA?.sparkles?.update({opacity:parseFloat(e.target.value)});}}
+              style={{width:'100%'}} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">الأشكال</label>
+          <div style={{display:'flex',gap:'1.5rem',flexWrap:'wrap',marginTop:'.5rem'}}>
+            {['star','circle','diamond','sparkle'].map(sh=>{
+              const shapes = (s.sparkles_shapes||'star,diamond,sparkle').split(',');
+              const active = shapes.includes(sh);
+              const labels: Record<string,string> = {star:'نجمة',circle:'دائرة',diamond:'معين',sparkle:'وميض'};
+              return (
+                <label key={sh} className="form-check">
+                  <input type="checkbox" checked={active} onChange={e=>{
+                    const arr = shapes.filter(x=>x); 
+                    const next = e.target.checked ? [...arr, sh] : arr.filter(x=>x!==sh);
+                    if(next.length===0) return;
+                    set('sparkles_shapes', next.join(','));
+                    (window as any).CNA?.sparkles?.update({shapes:next});
+                  }} />
+                  <span>{labels[sh]}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">ألوان الجسيمات (أضف ما تشاء)</label>
+          <div style={{display:'flex',gap:'.5rem',flexWrap:'wrap',alignItems:'center',marginTop:'.5rem'}}>
+            {(s.sparkles_colors||'#C9A84C,#E8D48B,#F0E6B2,#FFFFFF,#D4AF37').split(',').map((col,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:'.25rem'}}>
+                <input type="color" value={col} style={{width:36,height:36,cursor:'pointer',border:'1px solid var(--border)'}}
+                  onChange={e=>{
+                    const arr=(s.sparkles_colors||'').split(',');
+                    arr[i]=e.target.value;
+                    set('sparkles_colors',arr.join(','));
+                    (window as any).CNA?.sparkles?.update({colors:arr});
+                  }} />
+                <button type="button" className="btn btn-xs btn-danger" onClick={()=>{
+                  const arr=(s.sparkles_colors||'').split(',').filter((_,j)=>j!==i);
+                  set('sparkles_colors',arr.join(','));
+                }}>×</button>
+              </div>
+            ))}
+            <button type="button" className="btn btn-xs" onClick={()=>{
+              set('sparkles_colors',(s.sparkles_colors||'#C9A84C')+',' +'#'+(Math.floor(Math.random()*0xFFFFFF)).toString(16).padStart(6,'0'));
+            }}>+ لون</button>
+          </div>
+          <div style={{marginTop:'.75rem',display:'flex',gap:'.5rem',flexWrap:'wrap'}}>
+            {[
+              {label:'ذهبي',val:'#C9A84C,#E8D48B,#D4AF37,#F0E6B2,#FFFFFF'},
+              {label:'فضي',val:'#C0C0C0,#E8E8E8,#A8A8A8,#FFFFFF,#D8D8D8'},
+              {label:'بلوري',val:'#FFFFFF,#E0F7FF,#B3E5FC,#81D4FA,#F0FFFF'},
+              {label:'ملون',val:'#FF6B6B,#FFD93D,#6BCB77,#4D96FF,#FF6BFF'},
+              {label:'وطني',val:'#006847,#FFFFFF,#007A3D,#F0E6B2'},
+            ].map(p=>(
+              <button key={p.label} type="button" className="preset-chip"
+                onClick={()=>{set('sparkles_colors',p.val);(window as any).CNA?.sparkles?.update({colors:p.val.split(',')});}}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginTop:'.75rem',padding:'.85rem',background:'var(--gray-100)',fontSize:'.82rem',color:'var(--gray-500)',display:'flex',gap:'1rem',flexWrap:'wrap'}}>
+          <span>المعاينة تعمل مباشرة</span>
+          <button type="button" className="btn btn-xs" onClick={()=>{
+            if((window as any).CNA?.sparkles?.isRunning()) (window as any).CNA.sparkles.stop();
+            else (window as any).CNA?.sparkles?.start({enabled:true,count:parseInt(s.sparkles_count||'30'),speed:parseFloat(s.sparkles_speed||'1.2'),opacity:parseFloat(s.sparkles_opacity||'0.8'),colors:(s.sparkles_colors||'#C9A84C,#E8D48B').split(','),shapes:(s.sparkles_shapes||'star,diamond').split(',')});
+          }}>تبديل المعاينة</button>
         </div>
       </div>
 

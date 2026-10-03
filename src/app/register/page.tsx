@@ -63,7 +63,7 @@ export default function RegisterPage() {
     return (
       <div className="auth-page">
         <div className="auth-box" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✉️</div>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}></div>
           <h2 style={{ fontFamily: 'var(--font-heading)', marginBottom: '.75rem' }}>تحقق من بريدك الإلكتروني</h2>
           <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', lineHeight: 1.7 }}>
             أرسلنا رابط تأكيد إلى <strong style={{ color: 'var(--black)' }}>{form.email}</strong>.<br />

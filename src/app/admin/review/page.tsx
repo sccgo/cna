@@ -33,7 +33,7 @@ export default function ReviewPage() {
       {loading ? <div className="loading-state"><div className="spinner"/>جاري التحميل...</div> :
       news.length===0 ? (
         <div className="empty-state">
-          <div style={{fontSize:'3rem',marginBottom:'1rem'}}>✅</div>
+          <div style={{fontSize:'3rem',marginBottom:'1rem'}}></div>
           <div className="empty-state-title">لا يوجد محتوى بانتظار المراجعة</div>
           <p>جميع المقالات تمت مراجعتها</p>
         </div>
@@ -62,8 +62,8 @@ export default function ReviewPage() {
               <div style={{display:'flex',gap:'.5rem',marginTop:'1rem',paddingTop:'.75rem',borderTop:'1px solid var(--border)'}}>
                 <a href={`/news/${n.id}`} target="_blank" className="btn btn-xs btn-ghost">معاينة</a>
                 <Link href={`/admin/cms?edit=${n.id}`} className="btn btn-xs btn-ghost">تعديل</Link>
-                <button className="btn btn-xs btn-success" onClick={()=>review(n.id,'approve')}>✓ قبول ونشر</button>
-                <button className="btn btn-xs btn-danger" onClick={()=>{setRejectId(n.id);setNote('');}}>✗ رفض</button>
+                <button className="btn btn-xs btn-success" onClick={()=>review(n.id,'approve')}> قبول ونشر</button>
+                <button className="btn btn-xs btn-danger" onClick={()=>{setRejectId(n.id);setNote('');}}> رفض</button>
               </div>
             </div>
           ))}

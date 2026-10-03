@@ -1,35 +1,20 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+
+const MONTHS_AR_BASE = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const EZZ = new Set([9,10,11,12,1,2]);
+function getMonth(n: number): string { const b=MONTHS_AR_BASE[n]||''; return EZZ.has(n)?b+' العز':b; }
+function dateAr(d: string) { const dt=new Date(d); return `${dt.getDate()} ${getMonth(dt.getMonth()+1)} ${dt.getFullYear()}`; }
+function timeAgo(d: string) {
+  const m=Math.floor((Date.now()-new Date(d).getTime())/60000);
+  if(m<1) return 'الآن'; if(m<60) return `منذ ${m} دقيقة`;
+  const h=Math.floor(m/60); if(h<24) return `منذ ${h} ساعة`;
+  return dateAr(d);
+}
 import { useRouter } from 'next/navigation';
 
-const MONTHS_AR = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-function dateAr(d: string) { const dt = new Date(d); return `${dt.getDate()} ${MONTHS_AR[dt.getMonth()+1]} ${dt.getFullYear()} — ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; }
 
-function Counter({ c }: { c: any }) {
-  const [v, setV] = useState({d:'00',h:'00',m:'00',s:'00'});
-  useEffect(() => {
-    const u = () => { const start=new Date(c.startDate).getTime(),now=Date.now(); let diff=c.direction==='down'?(start-now):(now-start); if(diff<0)diff=0; const ts=Math.floor(diff/1000); setV({d:String(Math.floor(ts/86400)).padStart(2,'0'),h:String(Math.floor((ts%86400)/3600)).padStart(2,'0'),m:String(Math.floor((ts%3600)/60)).padStart(2,'0'),s:String(ts%60).padStart(2,'0')}); };
-    u(); const iv = setInterval(u,1000); return ()=>clearInterval(iv);
-  },[c]);
-  const bg = c.bgGradient || c.bgColor || '#000';
-  return (
-    <div className="counter-widget" style={{background:bg,margin:'1rem 0'}}>
-      {c.bgImage && <div className="counter-widget-bg" style={{backgroundImage:`url('${c.bgImage}')`}} />}
-      <div className="counter-widget-inner" style={{color:c.textColor||'#fff'}}>
-        <div className="counter-label">{c.label||'منذ'}</div>
-        <div className="counter-grid">
-          {[{v:v.d,l:'يوم'},{v:v.h,l:'ساعة'},{v:v.m,l:'دقيقة'},{v:v.s,l:'ثانية'}].map(u=>(
-            <div key={u.l} className="counter-unit">
-              <span className="counter-num" style={{fontFamily:'Georgia,serif'}}>{u.v}</span>
-              <span className="counter-name">{u.l}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PollWidget({ poll, newsId }: { poll: any; newsId: string }) {
   const [user, setUser] = useState<any>(null);
@@ -39,7 +24,15 @@ function PollWidget({ poll, newsId }: { poll: any; newsId: string }) {
   const [msg, setMsg] = useState('');
   const isExpired = poll.expiresAt && new Date(poll.expiresAt) < new Date();
 
-  useEffect(()=>{ fetch('/api/auth/me').then(r=>r.json()).then(d=>setUser(d.user)).catch(()=>{}); },[]);
+  useEffect(()=>{
+    fetch('/api/auth/me').then(r=>r.json()).then(d=>setUser(d.user)).catch(()=>{});
+    // Track view once per session using localStorage
+    const key = 'viewed_' + news.id;
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, '1');
+      fetch('/api/news/' + news.id + '/view', { method: 'POST' }).catch(()=>{});
+    }
+  },[]);
 
   const vote = async (idx: number) => {
     if (!user) { window.location.href=`/login?redirect=/news/${newsId}`; return; }
@@ -79,7 +72,7 @@ function PollWidget({ poll, newsId }: { poll: any; newsId: string }) {
           return (
             <div key={i} className="poll-result">
               <div className="poll-result-lbl">
-                <span>{opt}{myVote===i?' ✓':''}</span>
+                <span>{opt}{myVote===i?' ':''}</span>
                 <span>{pct}% ({v})</span>
               </div>
               <div className="poll-bar-track"><div className="poll-bar-fill" style={{width:`${pct}%`,background:myVote===i?'var(--black)':undefined}} /></div>
@@ -100,7 +93,15 @@ export default function NewsDetailClient({ news, related }: { news: any; related
   const isEn = lang === 'en' && news.titleEn;
   const heroStyle = news.heroStyle as any;
 
-  useEffect(()=>{ fetch('/api/auth/me').then(r=>r.json()).then(d=>setUser(d.user)).catch(()=>{}); },[]);
+  useEffect(()=>{
+    fetch('/api/auth/me').then(r=>r.json()).then(d=>setUser(d.user)).catch(()=>{});
+    // Track view once per session using localStorage
+    const key = 'viewed_' + news.id;
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, '1');
+      fetch('/api/news/' + news.id + '/view', { method: 'POST' }).catch(()=>{});
+    }
+  },[]);
 
   const canEdit = user && ['DIRECTOR','EDITOR_IN_CHIEF','EDITOR'].includes(user.role);
 
@@ -264,7 +265,7 @@ export default function NewsDetailClient({ news, related }: { news: any; related
       {/* Lightbox */}
       {lightbox && (
         <div className="lightbox" onClick={()=>setLightbox(null)}>
-          <button className="lightbox-close" onClick={()=>setLightbox(null)}>✕</button>
+          <button className="lightbox-close" onClick={()=>setLightbox(null)}></button>
           <img src={lightbox} alt="" onClick={e=>e.stopPropagation()} />
         </div>
       )}

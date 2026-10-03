@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createHmac, randomBytes } from 'crypto';
 
-// ─── HTML Sanitizer — zero external dependencies ──────────────────
+//  HTML Sanitizer — zero external dependencies 
 // Runs server-side only, no ESM issues
 export async function sanitizeHTML(dirty: string): Promise<string> {
   if (!dirty) return '';
@@ -56,7 +56,7 @@ export function stripHTML(html: string): string {
   return html.replace(/<[^>]*>/g, '').trim();
 }
 
-// ─── Rate Limiting ────────────────────────────────────────────────
+//  Rate Limiting 
 interface RLEntry { count: number; resetAt: number; }
 const store = new Map<string, RLEntry>();
 export interface RateLimitResult { success: boolean; remaining: number; resetAt: number; }
@@ -79,7 +79,7 @@ export const rateLimitAuth     = (ip: string) => rateLimit(`auth:${ip}`,      10
 export const rateLimitRegister = (ip: string) => rateLimit(`register:${ip}`,   5, 60*60_000);
 export const rateLimitAPI      = (ip: string, ep: string) => rateLimit(`api:${ip}:${ep}`, 60, 60_000);
 
-// ─── CSRF ──────────────────────────────────────────────────────────
+//  CSRF 
 const CSRF_SECRET = process.env.SESSION_SECRET ?? 'fallback-secret';
 export function generateCSRFToken(): string {
   const nonce = randomBytes(16).toString('hex');
@@ -96,7 +96,7 @@ export function verifyCSRFToken(token: string): boolean {
   return diff === 0;
 }
 
-// ─── Zod Schemas ──────────────────────────────────────────────────
+//  Zod Schemas 
 export const RegisterSchema = z.object({
   email:    z.string().email('بريد إلكتروني غير صالح').max(254).toLowerCase().trim(),
   username: z.string().min(3,'3 أحرف على الأقل').max(30).regex(/^[a-zA-Z0-9_\u0600-\u06FF]+$/,'رموز غير مسموح بها').trim(),
@@ -128,7 +128,7 @@ export const NewsCreateSchema = z.object({
   heroStyle:   z.object({ bgType: z.string(), bgValue: z.string().optional() }).optional(),
 });
 
-// ─── IP + Responses ───────────────────────────────────────────────
+//  IP + Responses 
 export function getClientIP(req: NextRequest): string {
   return req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
 }

@@ -85,6 +85,32 @@ export default function CMSPage() {
   const [galleryFiles, setGallery]  = useState<File[]>([]);
   const [user, setUser] = useState<any>(null);
   const quillArRef = useRef<any>(null);
+  const [translating, setTranslating] = useState(false);
+
+  async function translateContent(field: 'title'|'shortDesc'|'content') {
+    setTranslating(true);
+    let text = '';
+    if (field === 'content') {
+      text = quillArRef.current?.root.innerHTML || '';
+    } else if (field === 'title') {
+      text = form.title;
+    } else {
+      text = form.shortDesc;
+    }
+    if (!text.trim()) { setTranslating(false); return; }
+    try {
+      const res = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, from:'ar', to:'en' }) });
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || 'فشل الترجمة'); return; }
+      if (field === 'title')     setF('titleEn',     d.translated);
+      if (field === 'shortDesc') setF('shortDescEn', d.translated);
+      if (field === 'content' && quillEnRef.current) {
+        setTimeout(() => { if(quillEnRef.current) quillEnRef.current.root.innerHTML = d.translated; }, 200);
+        setF('lang', 'both');
+      }
+    } catch { setError('خطأ في الترجمة'); }
+    setTranslating(false);
+  }
   const quillEnRef = useRef<any>(null);
   const editorArEl = useRef<HTMLDivElement>(null);
   const editorEnEl = useRef<HTMLDivElement>(null);
@@ -235,14 +261,83 @@ export default function CMSPage() {
 
   const setF = (k: string, v: any) => setForm(p=>({...p,[k]:v}));
 
+  const [importDlg, setImportDlg] = useState(false);
+
+  function handleJSONImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        setF('title',       data.title       || data.ar_title       || data.عنوان       || '');
+        setF('titleEn',     data.titleEn     || data.en_title       || data.title_en    || '');
+        setF('shortDesc',   data.shortDesc   || data.description    || data.وصف_مختصر  || '');
+        setF('shortDescEn', data.shortDescEn || data.description_en || '');
+        setF('source',      data.source      || data.المصدر         || '');
+        setF('sourceUrl',   data.sourceUrl   || data.source_url     || '');
+        setF('tags',        Array.isArray(data.tags) ? data.tags.join(', ') : (data.tags||data.الوسوم||''));
+        setF('category',    data.category    || data.التصنيف        || 'general');
+        setF('liveUrl',     data.liveUrl     || data.live_url       || '');
+        if(data.isBreaking !== undefined)  setF('isBreaking',  !!data.isBreaking);
+        if(data.isFeatured !== undefined)  setF('isFeatured',  !!data.isFeatured);
+        if(data.isLive     !== undefined)  setF('isLive',      !!data.isLive);
+        // Fill Quill editor with content
+        const content = data.content || data.المحتوى || data.body || '';
+        if(content && quillArRef.current) {
+          setTimeout(() => {
+            if(quillArRef.current) quillArRef.current.root.innerHTML = content;
+          }, 300);
+        }
+        if(data.mainImage || data.main_image || data.الصورة_الرئيسية) {
+          setMainImgUrl(data.mainImage || data.main_image || data.الصورة_الرئيسية);
+        }
+        setImportDlg(false);
+        setSuccess('تم استيراد بيانات الخبر من الملف بنجاح');
+      } catch { setError('ملف JSON غير صالح — تأكد من صحة البنية'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
   return (
     <>
+      {importDlg && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
+          <div style={{background:'#fff',padding:'2rem',width:520,border:'2px solid var(--black)',maxWidth:'95vw'}}>
+            <h3 style={{fontFamily:'var(--font-heading)',marginBottom:'.75rem'}}>استيراد بيانات الخبر من ملف JSON</h3>
+            <p style={{fontSize:'.85rem',color:'var(--gray-500)',marginBottom:'1.25rem',lineHeight:1.7}}>
+              ارفع ملف <code style={{background:'var(--gray-100)',padding:'.1rem .4rem'}}>.json</code> يحتوي على بيانات الخبر.
+              الحقول المدعومة:
+            </p>
+            <div style={{background:'var(--gray-100)',padding:'1rem',fontFamily:'monospace',fontSize:'.78rem',marginBottom:'1rem',lineHeight:2,direction:'ltr',textAlign:'left'}}>
+{`{
+  "title": "العنوان بالعربية",
+  "titleEn": "Title in English",
+  "shortDesc": "الوصف المختصر",
+  "content": "<p>المحتوى HTML كامل</p>",
+  "source": "اسم المصدر",
+  "sourceUrl": "https://...",
+  "tags": ["وسم1", "وسم2"],
+  "category": "general",
+  "isBreaking": false,
+  "isFeatured": true,
+  "mainImage": "https://..."
+}`}
+            </div>
+            <input type="file" accept=".json" className="form-control" style={{marginBottom:'1rem'}} onChange={handleJSONImport} />
+            <div style={{display:'flex',gap:'.5rem',justifyContent:'flex-end'}}>
+              <button className="btn btn-ghost" onClick={()=>setImportDlg(false)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="admin-topbar">
         <h1 className="admin-page-title">{editId ? 'تعديل الخبر' : 'إنشاء خبر جديد'}</h1>
         <div style={{ display:'flex', gap:'.5rem' }}>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? <><span className="spinner" style={{width:16,height:16,borderWidth:2}}/>جاري الحفظ...</> : (editId ? 'حفظ التغييرات' : 'نشر الخبر')}
           </button>
+          <button className="btn btn-sm" onClick={()=>setImportDlg(true)}>استيراد JSON</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>router.back()}>إلغاء</button>
         </div>
       </div>
@@ -260,7 +355,7 @@ export default function CMSPage() {
               <input className="form-control" value={form.title} onChange={e=>setF('title',e.target.value)} placeholder="أدخل عنوان الخبر" />
             </div>
             <div className="form-group">
-              <label className="form-label">العنوان بالإنجليزية (اختياري)</label>
+              <label className="form-label">العنوان بالإنجليزية <button type="button" className="btn btn-xs" style={{marginRight:'.5rem'}} onClick={()=>translateContent('title')} disabled={translating}>{translating?'جاري الترجمة...''ترجمة تلقائية'}</button></label>
               <input className="form-control ltr" value={form.titleEn} onChange={e=>setF('titleEn',e.target.value)} placeholder="English title" dir="ltr" />
             </div>
             <div className="form-row">
@@ -269,7 +364,7 @@ export default function CMSPage() {
                 <textarea className="form-control" value={form.shortDesc} onChange={e=>setF('shortDesc',e.target.value)} rows={3} placeholder="وصف مختصر" />
               </div>
               <div className="form-group">
-                <label className="form-label">الوصف المختصر (إنجليزي)</label>
+                <label className="form-label">الوصف المختصر (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('shortDesc')} disabled={translating}>{translating?'...''ترجمة'}</button></label>
                 <textarea className="form-control ltr" value={form.shortDescEn} onChange={e=>setF('shortDescEn',e.target.value)} rows={3} placeholder="Short description" dir="ltr" />
               </div>
             </div>
@@ -293,7 +388,7 @@ export default function CMSPage() {
             {/* English editor */}
             {(form.lang==='en'||form.lang==='both') && (
               <div className="form-group">
-                <label className="form-label">المحتوى الكامل (إنجليزي)</label>
+                <label className="form-label">المحتوى الكامل (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('content')} disabled={translating} style={{marginRight:'.5rem'}}>{translating?'جاري الترجمة...''ترجمة المحتوى العربي'}</button></label>
                 <div ref={editorEnEl} style={{ direction:'ltr' }} />
               </div>
             )}

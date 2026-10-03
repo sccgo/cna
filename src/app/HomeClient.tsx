@@ -4,6 +4,17 @@ import type { FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+const MONTHS_AR_BASE = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const EZZ = new Set([9,10,11,12,1,2]);
+function getMonth(n: number): string { const b=MONTHS_AR_BASE[n]||''; return EZZ.has(n)?b+' العز':b; }
+function dateAr(d: string) { const dt=new Date(d); return `${dt.getDate()} ${getMonth(dt.getMonth()+1)} ${dt.getFullYear()}`; }
+function timeAgo(d: string) {
+  const m=Math.floor((Date.now()-new Date(d).getTime())/60000);
+  if(m<1) return 'الآن'; if(m<60) return `منذ ${m} دقيقة`;
+  const h=Math.floor(m/60); if(h<24) return `منذ ${h} ساعة`;
+  return dateAr(d);
+}
+
 type Settings  = Record<string, string>;
 type Dept      = { id: string; name: string; slug: string; color: string; _count?: { news: number } };
 type NewsItem  = { id: string; title: string; titleEn?: string; mainImage?: string; shortDesc?: string; shortDescEn?: string; isBreaking?: boolean; isLive?: boolean; lang?: string; category?: string; publishedAt?: string; createdAt: string; department?: { name: string; slug: string }; views?: number };
@@ -11,16 +22,7 @@ type BreakingItem = { id: string; text: string; bgColor: string; textColor: stri
 type FeaturedNews = NewsItem & { counter?: any; heroStyle?: any };
 type Election  = { id: string; title: string; type: string; isActive: boolean } | null;
 
-const MONTHS = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-function dateAr(d: string) { const dt = new Date(d); return `${dt.getDate()} ${MONTHS[dt.getMonth()+1]} ${dt.getFullYear()}`; }
-function timeAgo(d: string) {
-  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-  if (m < 1) return 'الآن';
-  if (m < 60) return `منذ ${m} دقيقة`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `منذ ${h} ساعة`;
-  return dateAr(d);
-}
+
 
 function Counter({ c }: { c: any }) {
   const [v, setV] = useState({ d:'00', h:'00', m:'00', s:'00' });
@@ -85,7 +87,7 @@ function Ticker({ items, bg, textColor, speed }: { items: BreakingItem[]; bg: st
         <div ref={trackRef} className="ticker-track">
           {all.map((item, i) => (
             <span key={i} className="ticker-item" style={{ cursor: item.linkUrl ? 'pointer':'default' }} onClick={() => { if (item.linkUrl) window.open(item.linkUrl,'_blank'); }}>
-              {item.text}<span className="ticker-sep"> ◆ </span>
+              {item.text}<span className="ticker-sep">  </span>
             </span>
           ))}
         </div>
@@ -215,7 +217,7 @@ export default function HomeClient({ settings, departments, featuredNews, breaki
                 <Link href="/login"    className="btn btn-sm btn-primary">دخول</Link>
               </>
             )}
-            <Link href="/newspaper" className="btn btn-sm" style={{ borderStyle:'dashed' }}>📰 عدد اليوم</Link>
+            <Link href="/newspaper" className="btn btn-sm" style={{ borderStyle:'dashed' }}> عدد اليوم</Link>
           </div>
         </div>
         <nav className="nav-bar">
@@ -228,6 +230,32 @@ export default function HomeClient({ settings, departments, featuredNews, breaki
         </nav>
       </header>
 
+      {/* Occasion strip */}
+      {settings.occasion_enabled === '1' && settings.occasion_text && (
+        <div style={{
+          background: settings.occasion_strip_bg || 'var(--black)',
+          color: settings.occasion_strip_color || '#fff',
+          overflow: 'hidden', height: 38, display: 'flex', alignItems: 'center',
+        }}>
+          <div style={{ whiteSpace: 'nowrap', animation: 'tickerMove 25s linear infinite', fontSize: '.88rem', fontWeight: 700, letterSpacing: '.05em', padding: '0 2rem' }}>
+            {Array(6).fill(settings.occasion_text).join('   ★   ')}
+          </div>
+        </div>
+      )}
+
+      {/* Occasion hero image */}
+      {settings.occasion_enabled === '1' && settings.occasion_image && (
+        <div style={{ position: 'relative', width: '100%', maxHeight: 320, overflow: 'hidden', cursor: 'pointer' }}
+          onClick={() => settings.occasion_link ? window.open(settings.occasion_link, '_blank') : null}>
+          <img src={settings.occasion_image} alt={settings.occasion_title||'مناسبة'} style={{ width:'100%', maxHeight:320, objectFit:'cover', display:'block' }} />
+          {settings.occasion_title && (
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent,rgba(0,0,0,.7))', color:'#fff', padding:'1.5rem', fontFamily:'var(--font-heading)', fontSize:'clamp(1.2rem,3vw,2rem)', fontWeight:700, textAlign:'center' }}>
+              {settings.occasion_title}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Ticker */}
       {breakingItems.length > 0 && (
         <Ticker items={breakingItems} bg={settings.ticker_bg||'#000'} textColor={settings.ticker_text_color||'#fff'} speed={parseInt(settings.ticker_speed||'40')} />
@@ -239,7 +267,7 @@ export default function HomeClient({ settings, departments, featuredNews, breaki
           {/* Election banner */}
           {activeElection && (
             <div style={{ background:'var(--black)', color:'#fff', padding:'.85rem 1.25rem', marginBottom:'1.5rem', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'.5rem' }}>
-              <span style={{ fontFamily:'var(--font-heading)', fontSize:'1rem' }}>🗳️ {activeElection.title}</span>
+              <span style={{ fontFamily:'var(--font-heading)', fontSize:'1rem' }}> {activeElection.title}</span>
               <Link href="/elections" className="btn btn-sm" style={{ borderColor:'#fff', color:'#fff' }}>شاهد النتائج</Link>
             </div>
           )}
@@ -342,7 +370,7 @@ export default function HomeClient({ settings, departments, featuredNews, breaki
               </div>
               {activeElection && (
                 <div className="sidebar-widget">
-                  <h3 className="sidebar-widget-title">🗳️ انتخابات</h3>
+                  <h3 className="sidebar-widget-title"> انتخابات</h3>
                   <Link href="/elections" style={{ display:'block', border:'1.5px solid var(--black)', padding:'.85rem', textAlign:'center', fontFamily:'var(--font-heading)', fontSize:'.95rem', color:'var(--black)', textDecoration:'none' }}>
                     {activeElection.title}
                   </Link>
