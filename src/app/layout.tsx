@@ -41,7 +41,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
-        {/* Sparkles effect */}
+        {/* Sparkles — loaded before body, config from DB */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.CNA_SPARKLES_CONFIG = null; // loaded dynamically
+          // Fetch sparkles config on load
+          window.addEventListener('load', function() {
+            fetch('/api/settings?keys=sparkles_enabled,sparkles_count,sparkles_speed,sparkles_colors,sparkles_shapes,sparkles_opacity')
+              .then(function(r){ return r.json(); })
+              .then(function(d) {
+                if(d.sparkles_enabled !== '1') return;
+                var cfg = {
+                  enabled: true,
+                  count:   parseInt(d.sparkles_count||'30'),
+                  speed:   parseFloat(d.sparkles_speed||'1.2'),
+                  opacity: parseFloat(d.sparkles_opacity||'0.8'),
+                  colors:  d.sparkles_colors ? d.sparkles_colors.split(',') : ['#C9A84C','#E8D48B','#FFFFFF','#D4AF37'],
+                  shapes:  d.sparkles_shapes ? d.sparkles_shapes.split(',') : ['star','diamond','sparkle'],
+                };
+                if(window.CNA && window.CNA.sparkles) window.CNA.sparkles.start(cfg);
+                else window.CNA_SPARKLES_CONFIG = cfg;
+              }).catch(function(){});
+          });
+        `}} />
         <script src="/vendor/sparkles.js" defer></script>
         {/* Live theme refresh every 30s */}
         <script dangerouslySetInnerHTML={{ __html: `

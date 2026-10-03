@@ -38,8 +38,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
     select: { id: true, title: true, titleEn: true, mainImage: true, publishedAt: true, shortDesc: true, department: { select: { name: true } } },
   }).catch(() => []);
 
-  // Increment views
-  prisma.news.update({ where: { id: news.id }, data: { views: { increment: 1 } } }).catch(() => {});
+  // Views tracked client-side via /api/news/[id]/view
 
   return (
     <NewsDetailClient

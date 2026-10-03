@@ -16,7 +16,7 @@ export async function getThemeSettings(): Promise<ThemeSettings> {
 export function generateThemeCSS(s: ThemeSettings): string {
   const rules: string[] = [];
 
-  // ── Body font ───────────────────────────────────────────────
+  //  Body font 
   const fontBody    = s.theme_font_body    || 'Cairo';
   const fontHeading = s.theme_font_heading || 'Amiri';
   rules.push(`
@@ -28,27 +28,27 @@ export function generateThemeCSS(s: ThemeSettings): string {
     h1,h2,h3,h4,h5 { font-family: var(--font-heading) !important; }
   `);
 
-  // ── Site background ─────────────────────────────────────────
+  //  Site background 
   const siteBg = resolveBackground(s.theme_site_bg_type, s.theme_site_bg_value);
   if (siteBg) rules.push(`body { background: ${siteBg} !important; }`);
 
-  // ── Header ──────────────────────────────────────────────────
+  //  Header 
   const headerBg = resolveBackground(s.theme_header_bg_type, s.theme_header_bg_value);
   if (headerBg) rules.push(`.site-header { background: ${headerBg} !important; }`);
 
-  // ── Nav bar ─────────────────────────────────────────────────
+  //  Nav bar 
   const navBg = resolveBackground(s.theme_nav_bg_type, s.theme_nav_bg_value);
   if (navBg) rules.push(`.nav-bar { background: ${navBg} !important; }`);
 
-  // ── Footer ──────────────────────────────────────────────────
+  //  Footer 
   const footerBg = resolveBackground(s.theme_footer_bg_type, s.theme_footer_bg_value);
   if (footerBg) rules.push(`.site-footer { background: ${footerBg} !important; }`);
 
-  // ── Cards ───────────────────────────────────────────────────
+  //  Cards 
   if (s.theme_card_bg) rules.push(`.news-card, .world-card { background: ${s.theme_card_bg} !important; }`);
   if (s.theme_card_border) rules.push(`.news-card, .world-card, .news-grid { border-color: ${s.theme_card_border} !important; }`);
 
-  // ── Accent color ────────────────────────────────────────────
+  //  Accent color 
   if (s.theme_accent_color) {
     const ac = s.theme_accent_color;
     rules.push(`
@@ -65,7 +65,7 @@ export function generateThemeCSS(s: ThemeSettings): string {
     `);
   }
 
-  // ── Text colors ─────────────────────────────────────────────
+  //  Text colors 
   if (s.theme_text_primary) {
     const tp = s.theme_text_primary;
     rules.push(`body,h1,h2,h3,h4,h5,.news-card-title,.detail-title,.hero-title { color:${tp}!important; }`);
@@ -75,7 +75,7 @@ export function generateThemeCSS(s: ThemeSettings): string {
     rules.push(`p,.news-card-desc,.news-card-footer,.hero-desc,.detail-meta { color:${ts}!important; }`);
   }
 
-  // ── Buttons ─────────────────────────────────────────────────
+  //  Buttons 
   if (s.theme_btn_bg) {
     const bg  = s.theme_btn_bg;
     const txt = s.theme_btn_text || '#fff';
@@ -88,25 +88,25 @@ export function generateThemeCSS(s: ThemeSettings): string {
     rules.push(`.btn:not(.btn-ghost):hover { background:${hbg}!important; color:${htxt}!important; border-color:${hbg}!important; }`);
   }
 
-  // ── Hero featured card ──────────────────────────────────────
+  //  Hero featured card 
   const heroBg = s.theme_hero_panel_gradient || s.theme_hero_panel_bg;
   if (heroBg) rules.push(`.hero-info { background:${heroBg}!important; }`);
   if (s.theme_hero_title_color) rules.push(`.hero-title { color:${s.theme_hero_title_color}!important; }`);
   if (s.theme_hero_desc_color) rules.push(`.hero-desc,.hero-meta { color:${s.theme_hero_desc_color}!important; }`);
   if (s.theme_hero_badge_bg) rules.push(`.hero-badge { background:${s.theme_hero_badge_bg}!important; color:${s.theme_hero_badge_text||'#fff'}!important; }`);
 
-  // ── Card title color ────────────────────────────────────────
+  //  Card title color 
   if (s.theme_card_title_color) rules.push(`.news-card-title { color:${s.theme_card_title_color}!important; }`);
 
-  // ── Nav link color ──────────────────────────────────────────
+  //  Nav link color 
   if (s.theme_nav_link_color) rules.push(`.nav-link { color:${s.theme_nav_link_color}!important; }`);
 
-  // ── Read more button ────────────────────────────────────────
+  //  Read more button 
   if (s.theme_readmore_bg) {
     rules.push(`.hero-read-btn { background:${s.theme_readmore_bg}!important; color:${s.theme_readmore_text||'#fff'}!important; border-color:${s.theme_readmore_border||s.theme_readmore_bg}!important; }`);
   }
 
-  // ── Breaking ticker ─────────────────────────────────────────
+  //  Breaking ticker 
   if (s.ticker_bg) rules.push(`.breaking-ticker { background:${s.ticker_bg}!important; }`);
   if (s.ticker_text_color) rules.push(`.breaking-ticker .ticker-item { color:${s.ticker_text_color}!important; }`);
 

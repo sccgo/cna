@@ -69,7 +69,7 @@ export default function LoginPage() {
               />
               <button type="button" onClick={() => setShowPass(p => !p)}
                 style={{ position:'absolute', left:'.7rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--gray-400)', fontSize:'.85rem' }}>
-                {showPass ? '🙈' : '👁'}
+                {showPass ? '' : ''}
               </button>
             </div>
           </div>

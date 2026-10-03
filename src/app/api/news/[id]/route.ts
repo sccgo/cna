@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 type Ctx = { params: { id: string } };
 
-// ─── GET single news ──────────────────────────────────────────
+//  GET single news 
 export async function GET(req: NextRequest, { params }: Ctx) {
   const session = await getSession();
   const user = session.user;
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   });
 }
 
-// ─── PUT update news ──────────────────────────────────────────
+//  PUT update news 
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const session = await getSession();
   const user = session.user;
@@ -163,7 +163,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   return apiSuccess({ id: params.id, status: newStatus });
 }
 
-// ─── PATCH — review/approve/reject ───────────────────────────
+//  PATCH — review/approve/reject 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const session = await getSession();
   const user = session.user;
@@ -195,7 +195,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   return apiSuccess({ status: action === 'approve' ? 'APPROVED' : 'REJECTED' });
 }
 
-// ─── DELETE ───────────────────────────────────────────────────
+//  DELETE 
 export async function DELETE(req: NextRequest, { params }: Ctx) {
   const session = await getSession();
   const user = session.user;

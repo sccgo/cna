@@ -61,7 +61,7 @@ export default function AdminDashboard() {
         <h1 className="admin-page-title">لوحة التحكم</h1>
         <div style={{ display:'flex', gap:'.5rem' }}>
           <Link href="/admin/cms?create=1" className="btn btn-primary btn-sm">+ خبر جديد</Link>
-          {isDirector && <Link href="/admin/settings" className="btn btn-sm">⚙️ الإعدادات</Link>}
+          {isDirector && <Link href="/admin/settings" className="btn btn-sm"> الإعدادات</Link>}
         </div>
       </div>
       <div className="admin-content">
@@ -102,14 +102,14 @@ export default function AdminDashboard() {
         <div className="admin-card">
           <div className="admin-card-title">إجراءات سريعة</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:'1rem' }}>
-            <ActionBtn href="/admin/cms?create=1" icon="✏️" label="خبر جديد" />
-            <ActionBtn href="/admin/import" icon="⬇️" label="استيراد خبر" />
-            {isEditorInChief && <ActionBtn href="/admin/review" icon="🔍" label="مراجعة المحتوى" />}
-            {isEditorInChief && <ActionBtn href="/admin/breaking" icon="🔴" label="خبر عاجل" />}
-            {isDirector      && <ActionBtn href="/admin/elections" icon="🗳️" label="الانتخابات" />}
-            {isEditorInChief && <ActionBtn href="/admin/newspaper" icon="📰" label="الجريدة" />}
-            {(user?.role==='ADMISSIONS'||isEditorInChief) && <ActionBtn href="/admin/users" icon="👥" label="المستخدمون" />}
-            {isDirector && <ActionBtn href="/admin/settings" icon="⚙️" label="التصميم" />}
+            <ActionBtn href="/admin/cms?create=1" icon="" label="خبر جديد" />
+            <ActionBtn href="/admin/import" icon="" label="استيراد خبر" />
+            {isEditorInChief && <ActionBtn href="/admin/review" icon="" label="مراجعة المحتوى" />}
+            {isEditorInChief && <ActionBtn href="/admin/breaking" icon="" label="خبر عاجل" />}
+            {isDirector      && <ActionBtn href="/admin/elections" icon="" label="الانتخابات" />}
+            {isEditorInChief && <ActionBtn href="/admin/newspaper" icon="" label="الجريدة" />}
+            {(user?.role==='ADMISSIONS'||isEditorInChief) && <ActionBtn href="/admin/users" icon="" label="المستخدمون" />}
+            {isDirector && <ActionBtn href="/admin/settings" icon="" label="التصميم" />}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 import { Role } from '@prisma/client';
 
-// ─── Permission definitions ───────────────────────────────────
+//  Permission definitions 
 
 export const PERMISSIONS = {
   // Content
