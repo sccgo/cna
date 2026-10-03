@@ -23,7 +23,7 @@ export default function DesignReviewPage() {
       body: JSON.stringify({ id, action: 'approve' }),
     });
     const d = await res.json();
-    if (res.ok) { setMsg('✅ تمت الموافقة وتطبيق التصميم فوراً'); load(); }
+    if (res.ok) { setMsg(' تمت الموافقة وتطبيق التصميم فوراً'); load(); }
     else setMsg(d.error || 'خطأ');
   }
 
@@ -47,7 +47,7 @@ export default function DesignReviewPage() {
         {loading ? <div className="loading-state"><div className="spinner" />جاري التحميل...</div> :
         changes.length === 0 ? (
           <div className="empty-state">
-            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🎨</div>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}></div>
             <div className="empty-state-title">لا توجد تعديلات بانتظار المراجعة</div>
           </div>
         ) : (
@@ -86,8 +86,8 @@ export default function DesignReviewPage() {
 
                 {c.status === 'PENDING' && (
                   <div style={{ display: 'flex', gap: '.5rem', marginTop: '.75rem' }}>
-                    <button className="btn btn-success btn-sm" onClick={() => approve(c.id)}>✓ موافقة وتطبيق فوري</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => reject(c.id)}>✗ رفض</button>
+                    <button className="btn btn-success btn-sm" onClick={() => approve(c.id)}> موافقة وتطبيق فوري</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => reject(c.id)}> رفض</button>
                   </div>
                 )}
               </div>

@@ -45,7 +45,7 @@ export default function NewspaperViewer() {
             صحيفة {siteName} — العدد {paper.edition}
           </div>
           <div className="header-actions">
-            <button className="btn btn-sm btn-primary" onClick={downloadPDF}>⬇ تحميل PDF</button>
+            <button className="btn btn-sm btn-primary" onClick={downloadPDF}> تحميل PDF</button>
             <Link href="/newspaper" className="btn btn-sm btn-ghost">الإصدارات</Link>
             <Link href="/" className="btn btn-sm btn-ghost">الموقع</Link>
           </div>

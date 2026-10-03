@@ -22,7 +22,7 @@ export default function NewspaperListPage() {
       </header>
       <main style={{padding:'2.5rem 0',minHeight:'70vh'}}>
         <div className="container">
-          <div className="section-header"><h1 className="section-title">📰 الجريدة</h1></div>
+          <div className="section-header"><h1 className="section-title"> الجريدة</h1></div>
           {loading ? <div className="loading-state"><div className="spinner"/>جاري التحميل...</div> :
           papers.length===0 ? <div className="empty-state"><div className="empty-state-title">لا توجد إصدارات بعد</div></div> : (
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'1.25rem'}}>

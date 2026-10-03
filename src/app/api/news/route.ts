@@ -9,7 +9,7 @@ import { sendContentReviewAlert } from '@/lib/email';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ─── GET /api/news ─────────────────────────────────────────────
+//  GET /api/news 
 export async function GET(req: NextRequest) {
   const ip = getClientIP(req);
   const rl = rateLimitAPI(ip, 'news-list');
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   return apiSuccess({ news, total, page, pages: Math.ceil(total / limit) });
 }
 
-// ─── POST /api/news ────────────────────────────────────────────
+//  POST /api/news 
 export async function POST(req: NextRequest) {
   const session = await getSession();
   const user = session.user;

@@ -381,7 +381,7 @@ select.form-control { cursor: pointer; }
 .admin-nav-link.active { background: rgba(255,255,255,.11); color: var(--white); border-right-color: var(--white); }
 .admin-nav-icon { width: 16px; text-align: center; font-size: .85rem; flex-shrink: 0; }
 .admin-sidebar-footer { padding: 1.2rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); }
-.admin-main { flex: 1; margin-left: 256px; margin-right: 0; background: var(--gray-100); min-height: 100vh; display: flex; flex-direction: column; }
+.admin-main { flex: 1; margin-right: 256px; margin-left: 0; background: var(--gray-100); min-height: 100vh; display: flex; flex-direction: column; }
 .admin-topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; gap: 1rem; direction: rtl; }
 .admin-page-title { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; }
 .admin-content { padding: 1.75rem; flex: 1; }
@@ -543,7 +543,7 @@ select.form-control { cursor: pointer; }
   .world-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .admin-sidebar { width: 220px; }
-  .admin-main { margin-left: 220px; margin-right: 0; }
+  .admin-main { margin-right: 220px; margin-left: 0; }
   .admin-content { padding: 1rem; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .footer-bottom { flex-direction: column; }
@@ -554,7 +554,7 @@ select.form-control { cursor: pointer; }
 @media (max-width: 500px) {
   .admin-layout { flex-direction: column; }
   .admin-sidebar { width: 100%; position: relative; height: auto; }
-  .admin-main { margin-left: 0; margin-right: 0; }
+  .admin-main { margin-right: 0; margin-left: 0; }
   .stats-grid { grid-template-columns: 1fr; }
   .election-candidates { grid-template-columns: 1fr; }
   .counter-grid { grid-template-columns: repeat(2,1fr); }
@@ -575,3 +575,8 @@ select.form-control { cursor: pointer; }
 /* ─── Admin sidebar sparkle hover ───────────────────────────── */
 .admin-sidebar-logo:hover { cursor: pointer; }
 .admin-sidebar-logo:hover .admin-logo-cna { text-shadow: 0 0 20px rgba(255,215,0,.6); }
+
+@keyframes tickerMove {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
