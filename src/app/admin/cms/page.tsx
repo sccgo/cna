@@ -355,7 +355,7 @@ export default function CMSPage() {
               <input className="form-control" value={form.title} onChange={e=>setF('title',e.target.value)} placeholder="أدخل عنوان الخبر" />
             </div>
             <div className="form-group">
-              <label className="form-label">العنوان بالإنجليزية <button type="button" className="btn btn-xs" style={{marginRight:'.5rem'}} onClick={()=>translateContent('title')} disabled={translating}>{translating?'جاري الترجمة...''ترجمة تلقائية'}</button></label>
+              <label className="form-label">العنوان بالإنجليزية <button type="button" className="btn btn-xs" style={{marginRight:'.5rem'}} onClick={()=>translateContent('title')} disabled={translating}>{translating ? 'جاري الترجمة...' : 'ترجمة تلقائية'}</button></label>
               <input className="form-control ltr" value={form.titleEn} onChange={e=>setF('titleEn',e.target.value)} placeholder="English title" dir="ltr" />
             </div>
             <div className="form-row">
@@ -364,7 +364,7 @@ export default function CMSPage() {
                 <textarea className="form-control" value={form.shortDesc} onChange={e=>setF('shortDesc',e.target.value)} rows={3} placeholder="وصف مختصر" />
               </div>
               <div className="form-group">
-                <label className="form-label">الوصف المختصر (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('shortDesc')} disabled={translating}>{translating?'...''ترجمة'}</button></label>
+                <label className="form-label">الوصف المختصر (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('shortDesc')} disabled={translating}>{translating ? '...' : 'ترجمة'}</button></label>
                 <textarea className="form-control ltr" value={form.shortDescEn} onChange={e=>setF('shortDescEn',e.target.value)} rows={3} placeholder="Short description" dir="ltr" />
               </div>
             </div>
@@ -388,7 +388,7 @@ export default function CMSPage() {
             {/* English editor */}
             {(form.lang==='en'||form.lang==='both') && (
               <div className="form-group">
-                <label className="form-label">المحتوى الكامل (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('content')} disabled={translating} style={{marginRight:'.5rem'}}>{translating?'جاري الترجمة...''ترجمة المحتوى العربي'}</button></label>
+                <label className="form-label">المحتوى الكامل (إنجليزي) <button type="button" className="btn btn-xs" onClick={()=>translateContent('content')} disabled={translating} style={{marginRight:'.5rem'}}>{translating ? 'جاري الترجمة...' : 'ترجمة المحتوى العربي'}</button></label>
                 <div ref={editorEnEl} style={{ direction:'ltr' }} />
               </div>
             )}

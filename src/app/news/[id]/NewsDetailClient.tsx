@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const MONTHS_AR_BASE = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const EZZ = new Set([9,10,11,12,1,2]);
@@ -12,9 +13,6 @@ function timeAgo(d: string) {
   const h=Math.floor(m/60); if(h<24) return `منذ ${h} ساعة`;
   return dateAr(d);
 }
-import { useRouter } from 'next/navigation';
-
-
 
 function PollWidget({ poll, newsId }: { poll: any; newsId: string }) {
   const [user, setUser] = useState<any>(null);
