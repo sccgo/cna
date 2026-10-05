@@ -134,3 +134,18 @@ export async function PATCH(req: NextRequest) {
 
   return apiSuccess({ success: true });
 }
+
+// DELETE /api/elections?id=xxx
+export async function DELETE(req: NextRequest) {
+  const session = await getSession();
+  const user = session.user;
+  if (!user || !can(user.role, 'elections:manage')) return apiError('غير مصرح', 403);
+  const id = req.nextUrl.searchParams.get('id');
+  if (!id) return apiError('ID مطلوب');
+  try {
+    await prisma.electionVote.deleteMany({ where: { electionId: id } });
+    await prisma.election.delete({ where: { id } });
+    await prisma.setting.updateMany({ where: { key:'election_active_id', value:id }, data:{ value:'' } });
+    return apiSuccess({ deleted: true });
+  } catch { return apiError('فشل الحذف', 500); }
+}

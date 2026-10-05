@@ -80,9 +80,12 @@ export default function SettingsPage() {
   const [msg,     setMsg]       = useState('');
   const [isDirector, setIsDir]  = useState(false);
   const [designTitle, setDesignTitle] = useState('تعديل تصميم');
+  const [banners, setBanners]   = useState<any[]>([]);
+  const [newBanner, setNewBanner] = useState({ type:'text', position:'top', text:'', imageUrl:'', html:'', link:'', bgColor:'#000000', textColor:'#ffffff', isTransparent:false });
   const [designDesc,  setDesignDesc]  = useState('');
 
   useEffect(() => {
+    fetch('/api/banners').then(r=>r.json()).then(d=>Array.isArray(d)?setBanners(d):setBanners([])).catch(()=>{});
     Promise.all([
       fetch('/api/settings').then(r=>r.json()),
       fetch('/api/auth/me').then(r=>r.json()),
@@ -289,6 +292,108 @@ export default function SettingsPage() {
           <label className="form-label">السرعة: {s.ticker_speed||40} (كلما زادت كان أبطأ)</label>
           <input type="range" min={5} max={100} value={s.ticker_speed||40} onChange={e=>set('ticker_speed',e.target.value)} style={{width:'100%'}} />
         </div>
+      </div>
+
+      {/* Ad Banners */}
+      <div className="admin-card">
+        <div className="admin-card-title">البنرات الإعلانية</div>
+        <p style={{fontSize:'.82rem',color:'var(--gray-500)',marginBottom:'1rem'}}>أضف بنرات تظهر بين أقسام الأخبار في الصفحة الرئيسية</p>
+
+        {/* Add new banner */}
+        <div style={{border:'1px solid var(--border)',padding:'1rem',marginBottom:'1rem',background:'var(--gray-100)'}}>
+          <div className="admin-card-title" style={{fontSize:'.88rem',marginBottom:'1rem'}}>إضافة بنر جديد</div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">نوع البنر</label>
+              <select className="form-control" value={newBanner.type} onChange={e=>setNewBanner(p=>({...p,type:e.target.value}))}>
+                <option value="text">نص</option>
+                <option value="image">صورة</option>
+                <option value="html">HTML مخصص</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">الموقع (بعد أي شعبة)</label>
+              <select className="form-control" value={newBanner.position} onChange={e=>setNewBanner(p=>({...p,position:e.target.value}))}>
+                <option value="top">أعلى الصفحة (بعد الهيرو)</option>
+                {s.department_slugs?.split(',').map((sl:string)=>( <option key={sl} value={sl}>{sl}</option> ))}
+              </select>
+            </div>
+          </div>
+          {newBanner.type==='text' && (
+            <div className="form-group">
+              <label className="form-label">النص</label>
+              <input className="form-control" value={newBanner.text} onChange={e=>setNewBanner(p=>({...p,text:e.target.value}))} placeholder="نص الإعلان..." />
+            </div>
+          )}
+          {newBanner.type==='image' && (
+            <div className="form-group">
+              <label className="form-label">صورة البنر</label>
+              <input type="file" accept="image/*" className="form-control" onChange={async e=>{
+                const f=e.target.files?.[0]; if(!f) return;
+                const fd=new FormData(); fd.append('file',f); fd.append('type','bg');
+                const res=await fetch('/api/upload',{method:'POST',body:fd}); const d=await res.json();
+                if(d.url) setNewBanner(p=>({...p,imageUrl:d.url}));
+              }} />
+            </div>
+          )}
+          {newBanner.type==='html' && (
+            <div className="form-group">
+              <label className="form-label">كود HTML</label>
+              <textarea className="form-control ltr" value={newBanner.html} onChange={e=>setNewBanner(p=>({...p,html:e.target.value}))} rows={4} dir="ltr" placeholder="<div>...</div>" />
+            </div>
+          )}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">خلفية</label>
+              <div style={{display:'flex',gap:'.5rem',alignItems:'center'}}>
+                <input type="color" className="form-control" value={newBanner.bgColor} onChange={e=>setNewBanner(p=>({...p,bgColor:e.target.value}))} style={{height:45,width:55}} />
+                <label className="form-check" style={{margin:0}}>
+                  <input type="checkbox" checked={newBanner.isTransparent} onChange={e=>setNewBanner(p=>({...p,isTransparent:e.target.checked}))} />
+                  <span>شفاف</span>
+                </label>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">لون النص</label>
+              <input type="color" className="form-control" value={newBanner.textColor} onChange={e=>setNewBanner(p=>({...p,textColor:e.target.value}))} style={{height:45}} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">رابط</label>
+              <input className="form-control ltr" value={newBanner.link} onChange={e=>setNewBanner(p=>({...p,link:e.target.value}))} placeholder="https://..." dir="ltr" />
+            </div>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={async()=>{
+            const res=await fetch('/api/banners',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newBanner)});
+            if(res.ok){setMsg('تم إضافة البنر');fetch('/api/banners').then(r=>r.json()).then(d=>setBanners(d));}
+            else setMsg('خطأ في الإضافة');
+          }}>إضافة البنر</button>
+        </div>
+
+        {/* Existing banners */}
+        {banners.length>0 && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>النوع</th><th>الموقع</th><th>المحتوى</th><th>إجراءات</th></tr></thead>
+              <tbody>
+                {banners.map((b:any)=>(
+                  <tr key={b.id}>
+                    <td><span className="status-badge status-approved">{b.type}</span></td>
+                    <td>{b.position}</td>
+                    <td style={{maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'.82rem'}}>{b.text||b.imageUrl||'HTML'}</td>
+                    <td>
+                      <div style={{display:'flex',gap:'.3rem'}}>
+                        <button className="btn btn-xs" onClick={async()=>{await fetch('/api/banners',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.id,isActive:!b.isActive})});fetch('/api/banners').then(r=>r.json()).then(d=>setBanners(d));}}>
+                          {b.isActive?'إخفاء':'إظهار'}
+                        </button>
+                        <button className="btn btn-xs btn-danger" onClick={async()=>{if(!confirm('حذف البنر؟'))return;await fetch('/api/banners?id='+b.id,{method:'DELETE'});fetch('/api/banners').then(r=>r.json()).then(d=>setBanners(d));}}>حذف</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Occasions */}

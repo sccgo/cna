@@ -31,6 +31,14 @@ export default function ElectionsAdmin() {
 
   useEffect(()=>{ loadElections(); },[]);
 
+  async function deleteElection(id: string, title: string) {
+    if(!confirm(`حذف انتخابات "${title}" نهائياً؟ سيتم حذف جميع الأصوات.`)) return;
+    const res = await fetch('/api/elections?id='+id, { method:'DELETE' });
+    const d = await res.json();
+    if(res.ok) { setMsg('تم الحذف'); if(selected?.id===id) setSelected(null); loadElections(); }
+    else setMsg(d.error||'فشل الحذف');
+  }
+
   async function loadElections() {
     setLoading(true);
     const d = await fetch('/api/elections').then(r=>r.json()).catch(()=>[]);
@@ -126,6 +134,7 @@ export default function ElectionsAdmin() {
                     <div style={{display:'flex',gap:'.3rem',flexWrap:'wrap'}}>
                       <button className="btn btn-xs" onClick={()=>selected?.id===e.id?setSelected(null):loadSelected(e.id)}>{selected?.id===e.id?'إخفاء':'عرض'}</button>
                       {e.isActive ? <button className="btn btn-xs btn-danger" onClick={()=>manageElection(e.id,'deactivate')}>إنهاء</button> : <button className="btn btn-xs btn-success" onClick={()=>manageElection(e.id,'activate')}>تفعيل</button>}
+                      <button className="btn btn-xs btn-danger" onClick={()=>deleteElection(e.id,e.title)}>حذف</button>
                     </div>
                   </td>
                 </tr>
