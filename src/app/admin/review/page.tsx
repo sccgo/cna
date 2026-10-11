@@ -1,88 +1,91 @@
-'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+"use client";
 
-export default function ReviewPage() {
-  const [news, setNews]   = useState<any[]>([]);
+import { useEffect, useState } from "react";
+
+type PendingArticle = {
+  id: string; titleAr: string; excerpt: string | null; submittedForReviewAt: string;
+  author: { fullName: string } | null; department: { nameAr: string } | null;
+};
+
+export default function AdminReviewPage() {
+  const [articles, setArticles] = useState<PendingArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState('');
-  const [note, setNote] = useState('');
-  const [rejectId, setRejectId] = useState<string|null>(null);
-
-  useEffect(() => { load(); }, []);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [note, setNote] = useState<Record<string, string>>({});
+  const [requestSent, setRequestSent] = useState(false);
 
   async function load() {
     setLoading(true);
-    const d = await fetch('/api/news?status=PENDING_REVIEW&limit=50').then(r=>r.json()).catch(()=>({}));
-    setNews(d.news||[]); setLoading(false);
+    const res = await fetch("/api/admin/articles");
+    const all = await res.json();
+    setArticles(Array.isArray(all) ? all.filter((a: any) => a.status === "PENDING_REVIEW") : []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function decide(id: string, approve: boolean) {
+    setBusyId(id);
+    await fetch(`/api/admin/articles/${id}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approve, note: note[id] || undefined })
+    });
+    setBusyId(null);
+    load();
   }
 
-  async function review(id: string, action: 'approve'|'reject', note?: string) {
-    const res = await fetch(`/api/news/${id}`,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action, note }) });
-    if(res.ok) { setMsg(action==='approve'?'تم قبول الخبر':'تم رفض الخبر'); setRejectId(null); load(); }
-    else { const d=await res.json(); setMsg(d.error||'خطأ'); }
+  async function requestEditPermission() {
+    await fetch("/api/permission-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "أطلب صلاحية تحرير المقالات مباشرة" })
+    });
+    setRequestSent(true);
   }
 
-  return (<>
-    <div className="admin-topbar">
-      <h1 className="admin-page-title">مراجعة المحتوى</h1>
-      <span style={{fontSize:'.9rem',color:'var(--gray-400)'}}>{news.length} بانتظار المراجعة</span>
-    </div>
-    <div className="admin-content">
-      {msg && <div className="alert alert-success" style={{marginBottom:'1rem'}}>{msg}</div>}
-      {loading ? <div className="loading-state"><div className="spinner"/>جاري التحميل...</div> :
-      news.length===0 ? (
-        <div className="empty-state">
-          <div style={{fontSize:'3rem',marginBottom:'1rem'}}></div>
-          <div className="empty-state-title">لا يوجد محتوى بانتظار المراجعة</div>
-          <p>جميع المقالات تمت مراجعتها</p>
+  return (
+    <div style={{ padding: 32, maxWidth: 760 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ marginBottom: 4 }}>مراجعة المقالات</h1>
+          <p style={{ opacity: 0.6, fontSize: 14 }}>القبول ينشر المقال للجميع فوراً. الرفض يبقيه مخفياً ويعود للمحرر مع الملاحظة.</p>
         </div>
+        <button onClick={requestEditPermission} disabled={requestSent} style={{ fontSize: 13, padding: "8px 14px", whiteSpace: "nowrap" }}>
+          {requestSent ? "تم إرسال الطلب ✓" : "اطلب صلاحية تحرير من المدير"}
+        </button>
+      </div>
+
+      {loading ? (
+        <p style={{ marginTop: 24 }}>...جارٍ التحميل</p>
+      ) : articles.length === 0 ? (
+        <p style={{ opacity: 0.6, marginTop: 24 }}>لا توجد مقالات بانتظار المراجعة حالياً.</p>
       ) : (
-        <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
-          {news.map(n=>(
-            <div key={n.id} className="admin-card" style={{padding:'1.25rem'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem',flexWrap:'wrap'}}>
-                <div style={{flex:1}}>
-                  <div style={{display:'flex',gap:'.5rem',marginBottom:'.5rem',flexWrap:'wrap'}}>
-                    {n.isBreaking && <span className="badge badge-breaking">عاجل</span>}
-                    {n.isFeatured && <span className="badge badge-imported">مميز</span>}
-                    <span className="status-badge status-pending">بانتظار المراجعة</span>
-                    <span style={{fontSize:'.75rem',color:'var(--gray-400)'}}>{n.department?.name||n.category}</span>
-                  </div>
-                  <h3 style={{fontFamily:'var(--font-heading)',fontSize:'1.1rem',marginBottom:'.4rem'}}>{n.title}</h3>
-                  {n.titleEn && <div style={{fontSize:'.85rem',color:'var(--gray-500)',direction:'ltr',textAlign:'left',marginBottom:'.4rem'}}>{n.titleEn}</div>}
-                  {n.shortDesc && <p style={{fontSize:'.85rem',color:'var(--gray-500)',margin:0}}>{n.shortDesc.substring(0,200)}...</p>}
-                  <div style={{display:'flex',gap:'1rem',marginTop:'.5rem',fontSize:'.75rem',color:'var(--gray-400)'}}>
-                    <span>الكاتب: {n.author?.fullName||'—'}</span>
-                    <span>{new Date(n.createdAt).toLocaleString('ar-SA')}</span>
-                  </div>
-                </div>
-                {n.mainImage && <img src={n.mainImage} alt="" style={{width:120,height:80,objectFit:'cover',flexShrink:0,border:'1px solid var(--border)'}} />}
+        <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+          {articles.map((a) => (
+            <div key={a.id} style={{ border: "1px solid #333", borderRadius: 10, padding: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 16 }}>{a.titleAr}</div>
+              <div style={{ fontSize: 12, opacity: 0.6, margin: "4px 0 10px" }}>
+                {a.author?.fullName ?? "—"} · {a.department?.nameAr ?? "بدون قسم"} · {new Date(a.submittedForReviewAt).toLocaleString("ar")}
               </div>
-              <div style={{display:'flex',gap:'.5rem',marginTop:'1rem',paddingTop:'.75rem',borderTop:'1px solid var(--border)'}}>
-                <a href={`/news/${n.id}`} target="_blank" className="btn btn-xs btn-ghost">معاينة</a>
-                <Link href={`/admin/cms?edit=${n.id}`} className="btn btn-xs btn-ghost">تعديل</Link>
-                <button className="btn btn-xs btn-success" onClick={()=>review(n.id,'approve')}> قبول ونشر</button>
-                <button className="btn btn-xs btn-danger" onClick={()=>{setRejectId(n.id);setNote('');}}> رفض</button>
+              {a.excerpt && <p style={{ fontSize: 14, opacity: 0.85, marginBottom: 10 }}>{a.excerpt}</p>}
+              <input
+                placeholder="ملاحظة (تظهر للمحرر عند الرفض)"
+                value={note[a.id] ?? ""}
+                onChange={(e) => setNote({ ...note, [a.id]: e.target.value })}
+                style={{ width: "100%", padding: 8, marginBottom: 10 }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button disabled={busyId === a.id} onClick={() => decide(a.id, true)} style={{ padding: "8px 16px", background: "#2e7d32", color: "#fff", borderRadius: 6, fontWeight: 700 }}>
+                  قبول ونشر
+                </button>
+                <button disabled={busyId === a.id} onClick={() => decide(a.id, false)} style={{ padding: "8px 16px", background: "#c62828", color: "#fff", borderRadius: 6, fontWeight: 700 }}>
+                  رفض
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      {/* Reject modal */}
-      {rejectId && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}}>
-          <div style={{background:'#fff',padding:'2rem',width:420,border:'2px solid var(--black)'}}>
-            <h3 style={{fontFamily:'var(--font-heading)',marginBottom:'1rem'}}>سبب الرفض</h3>
-            <textarea className="form-control" value={note} onChange={e=>setNote(e.target.value)} rows={3} placeholder="اكتب سبب الرفض للمحرر (اختياري)..." />
-            <div style={{display:'flex',gap:'.5rem',marginTop:'1rem',justifyContent:'flex-end'}}>
-              <button className="btn btn-danger" onClick={()=>review(rejectId,'reject',note)}>رفض المقال</button>
-              <button className="btn btn-ghost" onClick={()=>setRejectId(null)}>إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  </>);
+  );
 }

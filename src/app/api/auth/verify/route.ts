@@ -1,32 +1,37 @@
-import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { getIronSession } from 'iron-session';
-import { prisma } from '@/lib/db';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { apiError, apiSuccess } from '@/lib/security';
-import { sendApprovalEmail, sendNewRegistrationAlert } from '@/lib/email';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
 
-export const runtime = 'nodejs';
+const schema = z.object({
+  userId: z.string(),
+  code: z.string().length(6)
+});
 
-// GET /api/auth/verify?token=xxx
-export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get('token');
-  if (!token) return apiError('رمز التحقق مطلوب');
-
-  const user = await prisma.user.findUnique({ where: { verifyToken: token } });
-  if (!user) return apiError('رمز التحقق غير صالح أو منتهي', 400);
-  if (user.verifyExpires && user.verifyExpires < new Date()) {
-    return apiError('انتهت صلاحية رمز التحقق. أعد التسجيل', 400);
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
-  if (user.emailVerified) return apiSuccess({ message: 'تم تأكيد بريدك مسبقاً', alreadyVerified: true });
+  const { userId, code } = parsed.data;
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { emailVerified: true, status: 'VERIFIED', verifyToken: null, verifyExpires: null },
+  const record = await prisma.verificationCode.findFirst({
+    where: { userId, code },
+    orderBy: { createdAt: "desc" }
   });
 
-  // Notify admissions of new pending user
-  sendNewRegistrationAlert(user.fullName, user.email).catch(console.error);
+  if (!record || record.expiresAt < new Date()) {
+    return NextResponse.json({ error: "الرمز غير صحيح أو منتهي الصلاحية" }, { status: 400 });
+  }
 
-  return apiSuccess({ message: 'تم تأكيد بريدك الإلكتروني بنجاح. طلبك قيد المراجعة.' });
+  // Email confirmed → account now awaits admission committee (عمادة القبول) approval,
+  // per the unified login gate: verified email is necessary but not sufficient.
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerified: new Date(), status: "PENDING_ADMIN" }
+  });
+
+  await prisma.verificationCode.deleteMany({ where: { userId } });
+
+  return NextResponse.json({ ok: true });
 }

@@ -3,339 +3,357 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-// ─── ENUMS ───────────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// AUTH / UNIFIED LOGIN PORTAL
+// ──────────────────────────────────────────────
 
-enum Role {
-  VIEWER          // زائر - تصفح فقط
-  EDITOR          // محرر - ينشئ ويعدل (يحتاج مراجعة)
-  REVIEWER        // مراجع - يراجع ويقبل/يرفض
-  DEVELOPER       // مبرمج - يعدل التصميم (يحتاج موافقة)
-  EDITOR_IN_CHIEF // رئيس التحرير - صلاحيات كاملة للمحتوى
-  ADMISSIONS      // عمادة القبول - يقبل/يرفض المستخدمين
-  DIRECTOR        // رئيس الوكالة/المدير - كل الصلاحيات
+enum UserRole {
+  VIEWER          // زائر مسجل - يتصفح ويصوّت فقط
+  EDITOR          // محرر - ينشئ ويعدّل مقالات، تمر تعديلاته على المراجع
+  REVIEWER        // مراجع - يوافق أو يرفض مقالات المحررين فقط
+  DEVELOPER       // مبرمج - يقترح تعديلات التصميم، تحتاج موافقة المدير
+  EDITOR_IN_CHIEF // رئيس التحرير - يحرر وينشر ويحذف كل شيء، يتحكم بالمحررين
+  ADMISSIONS      // عمادة القبول - تقبل أو ترفض طلبات الحسابات فقط
+  DIRECTOR        // رئيس الوكالة / المدير - تحكم كامل بكل شيء
 }
 
-enum UserStatus {
-  PENDING   // في انتظار التحقق من البريد
-  VERIFIED  // تم التحقق من البريد - في انتظار القبول
-  APPROVED  // مقبول
-  REJECTED  // مرفوض
-  SUSPENDED // موقوف
+enum AccountStatus {
+  PENDING_EMAIL   // بانتظار تفعيل الإيميل
+  PENDING_ADMIN   // بانتظار موافقة عمادة القبول
+  APPROVED
+  REJECTED
 }
-
-enum ContentStatus {
-  DRAFT          // مسودة
-  PENDING_REVIEW // في انتظار المراجعة
-  APPROVED       // معتمد - يظهر للعامة
-  REJECTED       // مرفوض
-}
-
-enum DesignStatus {
-  PENDING  // في انتظار موافقة المدير
-  APPROVED // معتمد - يطبق على الموقع
-  REJECTED // مرفوض
-}
-
-// ─── USERS ───────────────────────────────────────────────────
 
 model User {
-  id             String     @id @default(cuid())
-  email          String     @unique
-  username       String     @unique
-  password       String
-  fullName       String
-  role           Role       @default(VIEWER)
-  status         UserStatus @default(PENDING)
-  emailVerified  Boolean    @default(false)
-  verifyToken    String?    @unique
-  verifyExpires  DateTime?
-  resetToken     String?    @unique
-  resetExpires   DateTime?
-  rejectionNote  String?
-  approvedBy     String?
-  approvedAt     DateTime?
-  lastLoginAt    DateTime?
-  avatar         String?
-  bio            String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id            String        @id @default(cuid())
+  fullName      String
+  email         String        @unique
+  passwordHash  String
+  role          UserRole      @default(VIEWER)
+  status        AccountStatus @default(PENDING_EMAIL)
+  emailVerified DateTime?
+  // For EDITOR-role users: رئيس التحرير can revoke editing ability without
+  // changing their role/identity. Ignored for all other roles.
+  canEdit       Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  news           News[]
-  pollVotes      PollVote[]
-  electionVotes  ElectionVote[]
-  sessions       Session[]
-  notifications  Notification[]
-  designChanges  DesignChange[]
-  activityLogs   ActivityLog[]
-
-  @@index([email])
-  @@index([status])
+  verificationCodes  VerificationCode[]
+  articles           Article[]          @relation("ArticleAuthor")
+  reviewedArticles   Article[]          @relation("ArticleReviewer")
+  votes              Vote[]
+  designProposals    DesignProposal[]   @relation("ProposedBy")
+  permissionRequests PermissionRequest[]
+  reviewedBy         String? // admin id who approved/rejected this account
 }
 
-model Session {
+model VerificationCode {
   id        String   @id @default(cuid())
-  token     String   @unique
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data      Json     @default("{}")
+  code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  @@index([token])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── CONTENT ──────────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// SITE DESIGN SYSTEM (controlled entirely from admin panel,
+// injected globally, force-applied on every page load)
+// ──────────────────────────────────────────────
 
-model Department {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  nameEn    String?
-  slug      String   @unique
-  color     String   @default("#0a0a0a")
-  icon      String?
-  order     Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  news      News[]
+enum BackgroundType {
+  SOLID
+  GRADIENT
+  IMAGE
 }
 
-model News {
-  id               String        @id @default(cuid())
-  title            String
-  titleEn          String?
-  slug             String        @unique
-  shortDesc        String?       @db.Text
-  shortDescEn      String?       @db.Text
-  content          String        @db.Text
-  contentEn        String?       @db.Text
-  lang             String        @default("ar")
-  mainImage        String?
-  images           String[]      @default([])
-  isBreaking       Boolean       @default(false)
-  breakingStyle    String        @default("ticker") // ticker | popup | bar
-  isFeatured       Boolean       @default(false)
-  isLive           Boolean       @default(false)
-  liveUrl          String?
-  status           ContentStatus @default(DRAFT)
-  reviewNote       String?
-  heroStyle        Json?         // {bgType, bgValue, titleColor, etc}
-  category         String        @default("general")
-  tags             String[]      @default([])
-  source           String?
-  sourceUrl        String?
-  isImported       Boolean       @default(false)
-  views            Int           @default(0)
-  publishedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+model SiteSettings {
+  id                 Int            @id @default(1)
 
-  authorId         String?
-  author           User?         @relation(fields: [authorId], references: [id])
-  departmentId     String?
-  department       Department?   @relation(fields: [departmentId], references: [id])
-  poll             Poll?
-  counter          Counter?
-  newspaperItems   NewspaperItem[]
+  // Typography
+  fontFamily         String         @default("Cairo")
 
-  @@index([status])
-  @@index([isBreaking])
-  @@index([isFeatured])
-  @@index([publishedAt])
+  // Global background
+  siteBgType         BackgroundType @default(SOLID)
+  siteBgSolid        String         @default("#0B1220")
+  siteBgGradientFrom String         @default("#0B1220")
+  siteBgGradientTo   String         @default("#152238")
+  siteBgImageUrl     String?
+
+  // News card background
+  cardBgType         BackgroundType @default(SOLID)
+  cardBgSolid        String         @default("#121A2C")
+  cardBgGradientFrom String?
+  cardBgGradientTo   String?
+  cardBgImageUrl     String?
+
+  // Header background
+  headerBgType       BackgroundType @default(SOLID)
+  headerBgSolid      String         @default("#080D17")
+  headerBgGradientFrom String?
+  headerBgGradientTo   String?
+  headerBgImageUrl     String?
+
+  primaryColor       String         @default("#B8892B")
+  accentColor        String         @default("#2B6E7A")
+  textColor          String         @default("#E7E2D3")
+
+  // Logo (persistent site logo, set from device upload via Cloudinary)
+  logoUrl            String?
+  // Optional temporary logo for a special occasion/event; overrides logoUrl while active
+  eventLogoUrl        String?
+  eventLogoActive     Boolean        @default(false)
+  eventLogoLabel      String?
+
+  siteNameAr         String         @default("وكالة الأنباء التنسيقية")
+  siteNameEn         String         @default("Coordination News Agency")
+
+  // LIVE streaming mode
+  liveActive         Boolean        @default(false)
+  liveYoutubeUrl     String?
+  liveTitle          String?
+
+  updatedAt          DateTime       @updatedAt
 }
+
+// ──────────────────────────────────────────────
+// COUNTDOWN / EVENT COUNTER WIDGET
+// ──────────────────────────────────────────────
+
+enum CounterDirection {
+  ASCENDING
+  DESCENDING
+}
+
+model EventCounter {
+  id            String           @id @default(cuid())
+  title         String
+  targetDate    DateTime
+  direction     CounterDirection @default(DESCENDING)
+  active        Boolean          @default(false)
+
+  labelFontFamily String @default("Cairo")
+  labelColor      String @default("#E7E2D3")
+  numberFontFamily String @default("Cairo")
+  numberColor     String @default("#B8892B")
+  bgType          BackgroundType @default(SOLID)
+  bgSolid         String  @default("#121A2C")
+  bgGradientFrom  String?
+  bgGradientTo    String?
+  bgImageUrl      String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────
+// US ELECTION MAP (live interactive results)
+// ──────────────────────────────────────────────
+
+model ElectionCycle {
+  id        String          @id @default(cuid())
+  title     String          // e.g. "الانتخابات الأمريكية 2028"
+  active    Boolean         @default(false)
+  updatedAt DateTime        @updatedAt
+  states    ElectionState[]
+}
+
+model ElectionState {
+  id               String   @id @default(cuid())
+  cycleId          String
+  stateCode        String   // e.g. "CA", "TX"
+  stateName        String
+  electoralVotes   Int
+  votesCandidateA  Int      @default(0)
+  votesCandidateB  Int      @default(0)
+  leaning          String   @default("TOSSUP") // BLUE | RED | TOSSUP
+  reportingPercent Int      @default(0)
+
+  cycle ElectionCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleId, stateCode])
+}
+
+// ──────────────────────────────────────────────
+// LOCAL POLLS / VOTING (registered users only)
+// ──────────────────────────────────────────────
 
 model Poll {
-  id         String     @id @default(cuid())
-  newsId     String     @unique
-  news       News       @relation(fields: [newsId], references: [id], onDelete: Cascade)
-  question   String
-  questionEn String?
-  options    String[]
-  optionsEn  String[]   @default([])
+  id        String       @id @default(cuid())
+  question  String
+  active    Boolean      @default(true)
+  endsAt    DateTime
+  createdAt DateTime     @default(now())
+  options   PollOption[]
+  votes     Vote[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  label  String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes  Vote[]
+}
+
+model Vote {
+  id       String     @id @default(cuid())
+  pollId   String
+  optionId String
+  userId   String
+  poll     Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option   PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([pollId, userId]) // one vote per user per poll
+}
+
+// ──────────────────────────────────────────────
+// CMS: DEPARTMENTS / ARTICLES
+// ──────────────────────────────────────────────
+
+model Department {
+  id       String    @id @default(cuid())
+  nameAr   String
+  nameEn   String
+  slug     String    @unique
+  articles Article[]
+}
+
+enum ArticleSource {
+  LOCAL   // كُتب يدويا عبر الـ CMS
+  API     // مستورد من مصدر خارجي (NewsAPI / scraper) بقالب الموقع
+}
+
+enum ArticleStatus {
+  DRAFT           // مسودة لدى المحرر، غير مرسلة للمراجعة بعد
+  PENDING_REVIEW  // بانتظار قرار المراجع
+  PUBLISHED       // منشور وظاهر للزوار
+  REJECTED        // رفضها المراجع، لا تظهر إلا للمحرر ورئيس التحرير
+  ARCHIVED
+}
+
+model Article {
+  id           String        @id @default(cuid())
+  titleAr      String
+  slug         String        @unique
+  excerpt      String?
+  contentHtml  String        // rich text (Quill) output
+  coverImageUrl String?
+  source       ArticleSource @default(LOCAL)
+  sourceName   String?       // e.g. "Reuters" when imported
+  sourceUrl    String?
+  status       ArticleStatus @default(DRAFT)
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  authorId String?
+  author   User?   @relation("ArticleAuthor", fields: [authorId], references: [id])
+
+  // Editorial review workflow (محرر ← مراجع)
+  submittedForReviewAt DateTime?
+  reviewedById         String?
+  reviewedBy           User?     @relation("ArticleReviewer", fields: [reviewedById], references: [id])
+  reviewNote           String?   // سبب الرفض إن وُجد
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  newspaperPageArticles NewspaperPageArticle[]
+}
+
+// ──────────────────────────────────────────────
+// BREAKING NEWS
+// ──────────────────────────────────────────────
+
+enum BreakingNewsDisplay {
+  TICKER
+  POPUP
+  BOTH
+}
+
+model BreakingNews {
+  id         String              @id @default(cuid())
+  text       String
+  isAuto     Boolean             @default(false) // true = pulled from API
+  display    BreakingNewsDisplay @default(TICKER)
+  active     Boolean             @default(true)
+  createdAt  DateTime            @default(now())
   expiresAt  DateTime?
-  isActive   Boolean    @default(true)
-  votes      PollVote[]
-  createdAt  DateTime   @default(now())
 }
 
-model PollVote {
-  id        String   @id @default(cuid())
-  pollId    String
-  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  optionIdx Int
-  createdAt DateTime @default(now())
+// ──────────────────────────────────────────────
+// DAILY NEWSPAPER (classic paginated layout + PDF export)
+// ──────────────────────────────────────────────
 
-  @@unique([pollId, userId])
-}
-
-model Counter {
-  id         String   @id @default(cuid())
-  newsId     String   @unique
-  news       News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
-  direction  String   @default("up") // up | down
-  startDate  DateTime
-  label      String   @default("منذ")
-  labelEn    String   @default("Since")
-  textFont   String   @default("Cairo")
-  numFont    String   @default("Georgia")
-  bgColor    String   @default("#000000")
-  bgGradient String?
-  bgImage    String?
-  textColor  String   @default("#ffffff")
-  numColor   String   @default("#ffffff")
-  isEnabled  Boolean  @default(true)
-}
-
-// ─── SETTINGS ─────────────────────────────────────────────────
-
-model Setting {
-  key       String   @id
-  value     String   @db.Text
-  updatedAt DateTime @updatedAt
-  updatedBy String?
-}
-
-model DesignChange {
-  id          String       @id @default(cuid())
-  title       String
-  description String?
-  settings    Json         // snapshot of changed settings
-  status      DesignStatus @default(PENDING)
-  reviewNote  String?
-  submittedBy String
-  developer   User         @relation(fields: [submittedBy], references: [id])
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  appliedAt   DateTime?
-  createdAt   DateTime     @default(now())
-}
-
-// ─── ELECTIONS ────────────────────────────────────────────────
-
-model Election {
-  id          String         @id @default(cuid())
-  title       String
-  titleEn     String?
-  type        String         @default("local") // local | us_presidential
-  description String?        @db.Text
-  isActive    Boolean        @default(false)
-  endsAt      DateTime?
-  candidates  Json           // [{id, name, nameEn, party, color, image}]
-  stateData   Json?          // For US elections: {AL: {winner, dem, rep, votes}}
-  results     Json?
-  totalVotes  Int            @default(0)
-  winner      String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  votes       ElectionVote[]
-}
-
-model ElectionVote {
-  id           String    @id @default(cuid())
-  electionId   String
-  election     Election  @relation(fields: [electionId], references: [id])
-  userId       String
-  user         User      @relation(fields: [userId], references: [id])
-  candidateId  String
-  state        String?
-  createdAt    DateTime  @default(now())
-
-  @@unique([electionId, userId])
-}
-
-// ─── NEWSPAPER ────────────────────────────────────────────────
-
-model Newspaper {
-  id          String          @id @default(cuid())
-  title       String
-  edition     Int
-  date        DateTime        @default(now())
-  isPublished Boolean         @default(false)
+model NewspaperIssue {
+  id          String   @id @default(cuid())
+  issueDate   DateTime @unique
+  isAutoBuilt Boolean  @default(false)
   pdfUrl      String?
-  coverImage  String?
-  template    String          @default("classic")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
+  createdAt   DateTime @default(now())
   pages       NewspaperPage[]
 }
 
 model NewspaperPage {
-  id           String          @id @default(cuid())
-  newspaperId  String
-  newspaper    Newspaper       @relation(fields: [newspaperId], references: [id], onDelete: Cascade)
-  pageNum      Int
-  section      String          @default("general") // local|international|economy|sports|culture|opinion
-  sectionAr    String          @default("عام")
-  layout       String          @default("standard") // standard|featured|columns
-  items        NewspaperItem[]
-  createdAt    DateTime        @default(now())
+  id           String   @id @default(cuid())
+  issueId      String
+  pageNumber   Int
+  sectionNameAr String  // محلي / رياضي / سياسي / اقتصادي ...
+  issue        NewspaperIssue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  articles     NewspaperPageArticle[]
+
+  @@unique([issueId, pageNumber])
 }
 
-model NewspaperItem {
-  id       String        @id @default(cuid())
-  pageId   String
-  page     NewspaperPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  newsId   String?
-  news     News?         @relation(fields: [newsId], references: [id])
-  title    String?
-  content  String?       @db.Text
-  image    String?
-  order    Int           @default(0)
-  size     String        @default("medium") // small|medium|large|full
+model NewspaperPageArticle {
+  id        String        @id @default(cuid())
+  pageId    String
+  articleId String
+  position  Int           @default(0)
+  page      NewspaperPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
 }
 
-// ─── NOTIFICATIONS ────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// DESIGN APPROVAL WORKFLOW (مبرمج يقترح ← مدير يوافق)
+// ──────────────────────────────────────────────
 
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // approval_request|content_review|design_review|election|etc
-  title     String
-  message   String
-  link      String?
-  isRead    Boolean  @default(false)
-  data      Json?
-  createdAt DateTime @default(now())
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
-// ─── ACTIVITY LOG ─────────────────────────────────────────────
-
-model ActivityLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  action    String
-  entity    String?
-  entityId  String?
-  details   Json?
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([createdAt])
+model DesignProposal {
+  id           String         @id @default(cuid())
+  proposedById String
+  proposedBy   User           @relation("ProposedBy", fields: [proposedById], references: [id])
+  changes      Json           // partial SiteSettings fields being proposed
+  status       ProposalStatus @default(PENDING)
+  reviewNote   String?
+  createdAt    DateTime       @default(now())
+  decidedAt    DateTime?
 }
 
-// ─── BREAKING NEWS ────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// PERMISSION REQUESTS (مراجع يطلب صلاحية تحرير من المدير)
+// ──────────────────────────────────────────────
 
-model BreakingNews {
-  id          String   @id @default(cuid())
-  text        String
-  textEn      String?
-  style       String   @default("ticker") // ticker | popup | fullbar
-  bgColor     String   @default("#cc0000")
-  textColor   String   @default("#ffffff")
-  linkUrl     String?
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+model PermissionRequest {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  message    String?
+  status     ProposalStatus @default(PENDING)
+  reviewNote String?
+  createdAt  DateTime       @default(now())
+  decidedAt  DateTime?
 }
